@@ -23,6 +23,6 @@ python main.py
 ```
 
 
-### Acknowledgements
-* Reference: [here] https://github.com/Helios77760/ASMCDD
-
+### Reference
+1. [code link](https://github.com/Helios77760/ASMCDD)
+2. [paper link](https://hal.inria.fr/hal-02064699/file/Accurate_Synthesis_of_Multi_Class_Disk_Distributions%20%281%29.pdf)
