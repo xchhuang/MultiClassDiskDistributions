@@ -513,11 +513,19 @@ int main(int argc, char *argv[]){
     std::cout << vs.size() << std::endl;
     algo.initialize(algo_params.domainLength, algo_params.error_delta);
     
-    std::ofstream out_init_pts("init_pts_final.txt");
+    std::ofstream out_init_pts("../outputs/init_pts_final.txt");
+    out_init_pts << vs.size();
+    for (unsigned long id=0; id<vs.size(); id++) {
+        out_init_pts << " " << (id + 1) * 1000;
+    }
+    out_init_pts << std::endl;
     for (unsigned long id=0; id<vs.size(); id++) {
         std::vector<Disk> ds = algo.getCurrentDisks(id);
         for (int j=0; j<ds.size(); j++) {
-            out_init_pts << ds[j].x << " " << ds[j].y << " " << id << " " << ds[j].r << std::endl;
+            float x = ds[j].x * 10000;
+            float y = ds[j].y * 10000;
+            float r = ds[j].r * 10000;
+            out_init_pts << (id + 1) * 1000 << " " << (int)x << " " << (int)y << " " << (int)r << std::endl;
         }
     }
     out_init_pts.close();
