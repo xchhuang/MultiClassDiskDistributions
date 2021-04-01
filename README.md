@@ -6,7 +6,7 @@ An unofficial implementation of "Accurate Synthesis of Multi-Class Disk Distribu
 * ```simpler_cpp```: an even simpler version compared with ```pure_cpp```, still improving.
 * ```python```: a python/pytorch implementation from scratch, still working
 
-### How run C++:
+### How to run C++:
 ```
 cd pure_cpp
 mkdir build
@@ -16,7 +16,7 @@ make
 ./DiskProject ../configs/constrained.txt
 ```
 
-### How run Python:
+### How to run Python:
 ```
 cd python
 python main.py
