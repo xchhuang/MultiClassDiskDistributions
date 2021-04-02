@@ -7,14 +7,25 @@ An unofficial implementation of "Accurate Synthesis of Multi-Class Disk Distribu
 * ```python```: a python/pytorch implementation from scratch, still working
 
 ### How to run C++:
+* Compile
 ```
 cd pure_cpp
 mkdir build
 cd build
 cmake ..
 make
+```
+
+* Run a single scene:
+```
 ./DiskProject ../configs/constrained.txt
 ```
+
+* Run all scenes
+```
+../scripts/run_all.sh
+```
+
 
 ### How to run Python:
 ```
