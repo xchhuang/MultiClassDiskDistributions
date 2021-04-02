@@ -9,7 +9,7 @@ An unofficial implementation of "Accurate Synthesis of Multi-Class Disk Distribu
 ### How to run C++:
 * Compile
 ```
-cd pure_cpp
+cd simpler_cpp
 mkdir build
 cd build
 cmake ..
