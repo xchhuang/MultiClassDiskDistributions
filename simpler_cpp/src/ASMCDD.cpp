@@ -35,6 +35,7 @@ void ASMCDD::addDependency(unsigned long parent, unsigned long child){
 void ASMCDD::computeTarget(){
     for(auto & category : (*categories.get()))
     {
+        // std::cout << category << std::endl;
         category.computeTarget();
     }
 }

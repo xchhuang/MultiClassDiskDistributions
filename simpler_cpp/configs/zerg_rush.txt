@@ -1,6 +1,2 @@
-examples/toy_3.txt
-1
-models/mutalisk.ply
-0 200 0
+examples/zerg_rush.txt
 0
-0 0 0 200 0
