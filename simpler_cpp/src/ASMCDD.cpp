@@ -88,25 +88,26 @@ void ASMCDD::loadFile(std::string const & filename){
         std::cout << "ERREUR" << std::endl;
         exit(1);
     }
-    unsigned int n_classes = buffer;
+    unsigned int n_classes = buffer;    // first row: number of classes
     std::map<unsigned int, unsigned int> id_map;
     auto cats = categories.get();
     cats->clear();
+
     for(unsigned int i=0; i<n_classes; i++)
     {
-        file >> buffer;
+        file >> buffer;  // first row: id starting from 1000, 2000, 3000
         id_map.insert_or_assign(buffer, i);
-        cats->emplace_back(i, categories, params);
+        cats->emplace_back(i, categories, params);  // category is now filled with n_classes
     }
     while(file >> buffer)
     {
         float x, y, r;
         unsigned int index = id_map[buffer];
-        file >> x >> y >>r;
-        x/=10000.f;
-        y/=10000.f;
-        r/=10000.f;
-        (*cats)[index].addTargetDisk({x,y,r});
+        file >> x >> y >> r;
+        x /= 10000.f;
+        y /= 10000.f;
+        r /= 10000.f;
+        (*cats)[index].addTargetDisk({x,y,r});  // index: class id
     }
     file.close();
 }

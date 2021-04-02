@@ -19,7 +19,10 @@
  */
 class ASMCDD{
 public:
-    explicit ASMCDD(){ categories=std::make_shared<std::vector<Category>>(); params=std::make_shared<ASMCDD_params>();};
+    explicit ASMCDD(){ 
+        categories=std::make_shared<std::vector<Category>>(); 
+        params=std::make_shared<ASMCDD_params>();
+    };
     explicit ASMCDD(std::string const & filename);
 
     /**

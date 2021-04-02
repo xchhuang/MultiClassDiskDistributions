@@ -41,16 +41,19 @@ void Category::computeTarget(){
     target_rmax.insert(std::make_pair(id, computeRmax(target_disks.size())));
     for(unsigned long parent : parents_id)
     {
+        // std::cout << "id: " <<id << ", parent: " << parent << std::endl;
         target_rmax.insert(std::make_pair(parent, computeRmax(target_disks.size()/*+(*categories.get())[parent].target_disks.size()*/)));
     }
     std::vector<float> area, radii;
     area.resize(nSteps);
     radii.resize(nSteps);
     std::vector<unsigned long> relations;
-    relations.push_back(id);
-    relations.insert(relations.end(),parents_id.begin(), parents_id.end());
+    relations.push_back(id);    // build relations, including itself and all parents
+    relations.insert(relations.end(), parents_id.begin(), parents_id.end());
+
     for(unsigned long parent : relations)
-    {
+    {   
+        // std::cout << "id: " <<id << ", parent: " << parent << std::endl;
         float rmax = target_rmax[parent];
         for(unsigned long i=0; i<nSteps; i++)
         {

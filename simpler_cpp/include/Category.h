@@ -55,7 +55,7 @@ public:
      * \return
      */
     unsigned long getFinalSize(float domainLength);
-
+    
 
     void reset();
 
