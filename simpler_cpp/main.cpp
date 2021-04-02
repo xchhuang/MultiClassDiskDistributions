@@ -113,9 +113,7 @@ int main(int argc, char *argv[]){
 
     // run algo
     algo.computeTarget();
-    
-    auto plots = algo.getPrettyTargetPCFplot(1);
-    
+
     //Initialization
     std::vector<unsigned long> vs = algo.getFinalSizes(1);
     std::cout << "Total number of class: " << vs.size() << std::endl;
@@ -138,6 +136,25 @@ int main(int argc, char *argv[]){
         }
     }
     out_init_pts.close();
-    std::cout << "Done !" << std::endl;
+    std::cout << "Algo Done !" << std::endl;
 
+    // plot pcf
+    auto plots = algo.getPrettyTargetPCFplot(1);
+    for(unsigned long id = 0; id < plots.second.size(); id++){
+        std::ofstream out_tar_pts("../outputs/"+example_filename+"_pcf_"+std::to_string(id)+".txt");
+        // std::cout << plots.second[id].second.size() << std::endl;
+        for(unsigned long i = 0; i < plots.second[id].second.size(); i++) {
+            // std::cout << plots.first[id][i].x << " " << plots.first[id][i].y << " " << plots.first[id][i].r << std::endl;
+            out_tar_pts << plots.second[id].second[i].first << " ";
+        }
+        out_tar_pts << std::endl;
+
+        for(unsigned long i = 0; i < plots.second[id].second.size(); i++) {
+            // std::cout << plots.first[id][i].x << " " << plots.first[id][i].y << " " << plots.first[id][i].r << std::endl;
+            out_tar_pts << plots.second[id].second[i].second << " ";
+        }
+        out_tar_pts << std::endl;
+        out_tar_pts.close();
+    }
+    std::cout << "Plot Done !" << std::endl;
 }

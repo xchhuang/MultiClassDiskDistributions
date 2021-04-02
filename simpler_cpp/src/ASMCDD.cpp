@@ -138,6 +138,7 @@ void ASMCDD::normalize(float domainLength){
 }
 
 std::pair<std::vector<std::vector<Disk>>, std::vector<std::pair<std::pair<unsigned long, unsigned long>, std::vector<std::pair<float, float>>>>> ASMCDD::getPrettyPCFplot(float domainLength, std::vector<unsigned long> const &currentSizes){
+    
     std::pair<std::vector<std::vector<Disk>>, std::vector<std::pair<std::pair<unsigned long, unsigned long>, std::vector<std::pair<float, float>>>>> plots;
     float diskfactor = 1/domainLength;
     //Get all the disks and info

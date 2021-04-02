@@ -4,6 +4,25 @@ import matplotlib.pyplot as plt
 import math
 import glob
 
+
+def read_pcf(scene_name):
+    files = glob.glob('outputs/'+scene_name+'_pcf_*.txt')
+    pcfs = []
+    for file in files:
+        print(file)
+        with open(file) as f:
+            lines = f.readlines()
+            xx, yy = lines[0], lines[1]
+            xx = xx.strip().split(' ')
+            xx = [float(x) for x in xx]
+            yy = yy.strip().split(' ')
+            yy = [float(y) for y in yy]
+        pcfs.append([xx, yy])
+    pcfs = np.array(pcfs)
+    # print(pcfs.shape)
+    return pcfs
+
+
 def read_txt(path='build/init_pts_final.txt', start=1, normalize=True):
     pts = []
     cla = []
@@ -55,10 +74,9 @@ def read_all_txt(path='outputs'):
         plt.clf()
 
 
-def plot_txt():
-    scene_name = 'zerg_rush'
+def plot_txt(scene_name):
     init_cla, init_pts = read_txt(path='outputs/'+scene_name+'_init.txt', start=1, normalize=False)
-    tar_cla, tar_pts = read_txt(path='examples/toy_3.txt', start=1, normalize=True)
+    tar_cla, tar_pts = read_txt(path='examples/'+scene_name+'.txt', start=1, normalize=True)
 
     plt.figure(1)
     plt.subplot(121)
@@ -73,12 +91,21 @@ def plot_txt():
     plt.axis('equal')
     plt.xlim([0, 1])
     plt.ylim([0, 1])
-    plt.savefig('outputs/result')
+    plt.savefig('outputs/'+scene_name)
+    plt.clf()
+
+    plt.figure(1)
+    pcfs = read_pcf(scene_name)
+    for i in range(pcfs.shape[0]):
+        pcf = pcfs[i]
+        plt.plot(pcf[0,:], pcf[1,:])
+    plt.savefig('outputs/'+scene_name+'_pcf')
     plt.clf()
 
 
 def main():
-    read_all_txt()
+    # read_all_txt()
+    plot_txt('forest')
 
 
 if __name__ == '__main__':
