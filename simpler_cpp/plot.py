@@ -8,8 +8,12 @@ import glob
 def read_pcf(scene_name):
     files = glob.glob('outputs/'+scene_name+'_pcf_*.txt')
     pcfs = []
+    ids = []
     for file in files:
-        print(file)
+        # print(file)
+        num = file.split('/')[-1].split('.')[0].split('_')
+        # print(num[-2:])
+        ids.append('_'.join(num[-2:]))
         with open(file) as f:
             lines = f.readlines()
             xx, yy = lines[0], lines[1]
@@ -20,7 +24,7 @@ def read_pcf(scene_name):
         pcfs.append([xx, yy])
     pcfs = np.array(pcfs)
     # print(pcfs.shape)
-    return pcfs
+    return pcfs, ids
 
 
 def read_txt(path='build/init_pts_final.txt', start=1, normalize=True):
@@ -95,10 +99,12 @@ def plot_txt(scene_name):
     plt.clf()
 
     plt.figure(1)
-    pcfs = read_pcf(scene_name)
+    pcfs, ids = read_pcf(scene_name)
     for i in range(pcfs.shape[0]):
         pcf = pcfs[i]
         plt.plot(pcf[0,:], pcf[1,:])
+    plt.legend(ids)
+    # plt.ylim([0,2])
     plt.savefig('outputs/'+scene_name+'_pcf')
     plt.clf()
 

@@ -114,6 +114,28 @@ int main(int argc, char *argv[]){
     // run algo
     algo.computeTarget();
 
+    // plot disk-based pcf: very weird
+    auto result = algo.getTargetPCFplot();
+    // std::cout << result.size() << std::endl;
+    for (int i=0; i<result.size(); i++) {
+        int id_a = result[i].first.first;
+        int id_b = result[i].first.second;
+        std::cout << id_a << " " << id_b << std::endl;
+
+        std::ofstream out_tar_pts("../outputs/"+example_filename+"_pcf_"+std::to_string(id_a)+"_"+std::to_string(id_b)+".txt");
+        // std::cout << plots.second[id].second.size() << std::endl;
+        for(unsigned long j = 0; j < result[j].second.size(); j++) {
+            out_tar_pts << result[i].second[j].first << " ";
+        }
+        out_tar_pts << std::endl;
+        for(unsigned long j = 0; j < result[j].second.size(); j++) {
+            out_tar_pts << result[i].second[j].second << " ";
+        }
+        out_tar_pts << std::endl;
+        out_tar_pts.close();
+        
+    }
+
     //Initialization
     std::vector<unsigned long> vs = algo.getFinalSizes(1);
     std::cout << "Total number of class: " << vs.size() << std::endl;
@@ -138,7 +160,7 @@ int main(int argc, char *argv[]){
     out_init_pts.close();
     std::cout << "Algo Done !" << std::endl;
 
-    // plot pcf
+    // plot point-based pretty pcf
     auto plots = algo.getPrettyTargetPCFplot(1);
     for(unsigned long id = 0; id < plots.second.size(); id++){
         std::ofstream out_tar_pts("../outputs/"+example_filename+"_pcf_"+std::to_string(id)+".txt");
@@ -158,3 +180,6 @@ int main(int argc, char *argv[]){
     }
     std::cout << "Plot Done !" << std::endl;
 }
+
+
+
