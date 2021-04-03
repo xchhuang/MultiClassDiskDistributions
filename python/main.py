@@ -10,6 +10,7 @@ import os
 import glob
 from collections import defaultdict
 from asmcdd import ASMCDD
+from trainer import Trainer
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -80,7 +81,7 @@ def main():
         for k in categories.keys():
             print('#Disk of class {:} {:}, their parents {:}'.format(k, len(categories[k]), relations[k]))
 
-        ASMCDD(device, opt, categories, relations)
+        Trainer(device, opt, categories, relations)
 
 if __name__ == "__main__":
     main()
