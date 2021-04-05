@@ -32,7 +32,7 @@ class ASMCDD(torch.nn.Module):
         self.opt = opt
         self.categories = categories
         self.relations = relations
-
+        self.nSteps = 50
         self.target = torch.nn.ParameterList()
         for k in categories.keys():
             self.target.append(torch.nn.Parameter(torch.from_numpy(np.array(categories[k])).float()))
@@ -62,7 +62,7 @@ class ASMCDD(torch.nn.Module):
                 # if not (category_i == 0 and category_j == 0):
                 #     continue
                 # print(category_j, category_i)
-                cur_pcf_model = PCF(self.device, nbbins=50, sigma=0.25, npoints=len(target_disks), n_rmax=5).to(self.device)
+                cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=0.25, npoints=len(target_disks), n_rmax=5).to(self.device)
                 cur_pcf_mean, cur_pcf_min, cur_pcf_max = cur_pcf_model(target_disks, parent_disks, same_category=same_category, dimen=3, use_fnorm=True)
                 self.pcf_model.append(cur_pcf_model)
                 # plt.figure(1)
@@ -112,10 +112,18 @@ class ASMCDD(torch.nn.Module):
         diskfact = 1 / domainLength
         n_repeat = math.ceil(n_factor)
         # print(n_factor, diskfact, n_repeat)
+        e_0 = 0
+        max_fails = 1000
+        fails = 0
+        n_accepted = 0
+        disks = []
 
         for i in topological_order:
             target_disks = self.categories[i]
             target_disks = torch.from_numpy(np.array(target_disks)).double().to(self.device)
+            min_x, max_x = target_disks[:, 0].min().item(), target_disks[:, 0].max().item()
+            min_y, max_y = target_disks[:, 1].min().item(), target_disks[:, 1].max().item()
+            # print(min_x, max_x, min_y, max_y)
             # print(target_disks.shape)
             output_disks_radii = torch.zeros(target_disks.shape[0]*n_repeat).double().to(self.device)
             output_disks_radii = target_disks[:, -1].repeat(n_repeat)
@@ -123,6 +131,40 @@ class ASMCDD(torch.nn.Module):
             output_disks_radii = output_disks_radii[idx].view(output_disks_radii.size())
             output_disks_radii, _ = torch.sort(output_disks_radii, descending=True)
             # print(i, output_disks_radii.shape)
+
+            # init
+            current_pcf = []
+            weights = []
+            for relation in self.relations[i]:
+                print(i, relation)
+                init_pcf = torch.zeros(self.nSteps).to(self.device)
+                current_pcf.append(init_pcf)
+                cur_pcf_model = PCF(self.device, nbbins=50, sigma=0.25, npoints=len(target_disks), n_rmax=5).to(self.device)
+
+                parent_disks = self.categories[relation]
+                parent_disks = torch.from_numpy(np.array(parent_disks)).double().to(self.device)
+                for p in parent_disks:
+                    p = p.view(1, -1)
+                    cur_weight = cur_pcf_model.perimeter_weight(p[:, 0], p[:, 1])
+                    print(cur_weight)
+
+            return
+            while n_accepted < output_disks_radii.shape[0]:
+                print(n_accepted, output_disks_radii.shape[0])
+
+                reject = False
+                e = e_0 + e_delta * fails
+                rx = min_x + np.random.rand() * (max_x - min_x)
+                ry = min_y + np.random.rand() * (max_y - min_y)
+                d_test = [rx, ry, output_disks_radii[n_accepted]]
+                d_test = torch.from_numpy(np.array(d_test)).double().to(self.device)
+                # print(d_test)
+
+                for relation in self.relations[i]:
+                    if len(disks) != 0 or i != relation:
+                        pass
+                n_accepted += 1
+
 
     def forward(self):
         for i in range(3):

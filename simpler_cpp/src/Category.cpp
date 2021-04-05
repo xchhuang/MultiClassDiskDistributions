@@ -89,7 +89,7 @@ void Category::initialize(float domainLength, float e_delta){
     //Initialize the parents before this one (akin to the topological order)
     for(unsigned long parent : parents_id)
     {
-        // std::cout << "topological order: " << parent << std::endl;
+        std::cout << "topological order: " << id << " " << parent << std::endl;
         (*categories.get())[parent].initialize(domainLength, e_delta);
     }
 
@@ -118,7 +118,7 @@ void Category::initialize(float domainLength, float e_delta){
     std::sort(output_disks_radii.rbegin(), output_disks_radii.rend()); //Sort the radii in descending order
     finalSize = output_disks_radii.size();
 
-    std::cout << id << " " << output_disks_radii.size() << std::endl;
+    // std::cout << id << " " << output_disks_radii.size() << std::endl;
     float e_0 = 0;
     unsigned long max_fails=1000;
     unsigned long fails=0;
@@ -138,12 +138,35 @@ void Category::initialize(float domainLength, float e_delta){
     std::map<unsigned long, std::vector<std::vector<float>>> weights;
     std::map<unsigned long, std::vector<float>> current_pcf;
 
-    //Compute the weights for each realtion disks
+    // Compute the weights for each realtion disks
     for(auto relation : relations){
+
+        // if (id != 0 || relation != 0) {
+        //     return;
+        // }
+        // std::cout << id << " " << relation << std::endl;
         current_pcf.insert(std::make_pair(relation, 0));
         current_pcf[relation].resize(nSteps, 0);
-        weights.insert(std::make_pair(relation, get_weights(others[relation].disks, target_radii[relation], diskfact)));
+
+        // std::cout << others[relation].disks.size() << std::endl;
+        std::vector<std::vector<float>> current_weight = get_weights(others[relation].disks, target_radii[relation], diskfact);
+        // std::cout << "current_weight.size(): " << current_weight.size() << std::endl;
+        // for (int i=0; i<current_weight.size(); i++) {
+        //     for (int j=0; j<current_weight[i].size(); j++) {
+        //         std::cout << current_weight[i][j] << " ";
+        //     }
+        //     std::cout << std::endl;
+        // }
+        weights.insert(std::make_pair(relation, current_weight));
     }
+
+    // original code
+    // for(auto relation : relations){
+    //     std::cout << "current_weight.size(): " << others[relation].disks.size() << std::endl;
+    //     current_pcf.insert(std::make_pair(relation, 0));
+    //     current_pcf[relation].resize(nSteps, 0);
+    //     weights.insert(std::make_pair(relation, get_weights(others[relation].disks, target_radii[relation], diskfact)));
+    // }
 
     std::map<unsigned long, Contribution> contributions;
 
