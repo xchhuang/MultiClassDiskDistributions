@@ -171,12 +171,12 @@ class PCF(torch.nn.Module):
         return E
 
     # def forward(self, pts, c, t, dimen=3, use_fnorm=True, mean_pcf=False):
-    def forward(self, disks_a, disks_b, same_category, dimen=3, use_fnorm=True, ):
+    def forward(self, disks_a, disks_b, same_category, dimen=3, use_fnorm=True):
         # print(disks_a.shape, disks_b.shape, same_category)
-        pcf = torch.zeros(self.nbbins, 2)
-        hist = torch.zeros(self.nbbins)
-        pcf_lower = torch.ones(self.nbbins) * 1e4
-        pcf_upper = torch.zeros(self.nbbins)
+        pcf = torch.zeros(self.nbbins, 2).to(self.device)
+        # hist = torch.zeros(self.nbbins)
+        pcf_lower = torch.ones(self.nbbins).to(self.device) * 1e4  # init with very large number
+        pcf_upper = torch.zeros(self.nbbins).to(self.device)
 
         for i in range(disks_a.size(0)):
             pi = disks_a[i]
@@ -186,8 +186,6 @@ class PCF(torch.nn.Module):
             else:
                 pj = torch.cat([disks_a[0:i], disks_a[i+1:]])   # ignore the i_th disk itself
                 pi = pi.repeat(pj.size(0), 1)
-
-
 
             if use_fnorm:
                 d = utils.diskDistance(pi, pj, self.rmax)
@@ -201,30 +199,209 @@ class PCF(torch.nn.Module):
 
             pts_w = pi[0:1].view(1, -1)  # same
             weights = self.perimeter_weight(pts_w[:, 0], pts_w[:, 1])
-            print(weights)
-        #     # hist = hist + torch.sum(val,0)
-        #
-        #     cur_pcf = torch.sum(val, 0)  # weights
-        #     hist = hist + cur_pcf
-        #
-        #     pcf_lower = torch.min(pcf_lower, cur_pcf / (denorm_2 * self.area))
-        #     pcf_upper = torch.max(pcf_upper, cur_pcf / (denorm_2 * self.area))
-        #     # if i > 7:
-        #     #     break
-        #
-        # # cov = 1.0 - ((2.0*self.rs)/math.pi)*2.0 + ((self.rs*self.rs)/math.pi)
-        # # factor = 2.0*math.pi*self.rs*cov
-        # # factor = 1.0/factor
-        # # pcf[:,1] *= factor
-        # # print (self.area)
-        # pcf[:, 1] = hist / (denom * self.area)
-        # pcf[:, 0] = self.rs / self.rmax
-        #
-        # # print ('pcf_lower:',pcf_lower)
-        # # print ('pcf_upper:',pcf_upper)
-        # pcf = torch.cat((pcf, pcf_lower.view(-1, 1), pcf_upper.view(-1, 1)), dim=1)
-        # # print (pcf.size())
-        return pcf
+            # print(weights)
+            density = torch.sum(val * weights / self.area, 0)   # consistent with cpp results until now
+            density = density / disks_b.size(0)
+            pcf[:, 1] = pcf[:, 1] + density
+            pcf_lower = torch.min(pcf_lower, density)
+            pcf_upper = torch.max(pcf_upper, density)
+
+        pcf[:, 1] = pcf[:, 1] / disks_a.size(0)
+        pcf[:, 0] = self.rs / self.rmax
+        return pcf, pcf_lower, pcf_upper
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class PrettyPCF(torch.nn.Module):
+    def __init__(self, device, nbbins=50, sigma=0.25, npoints=100, n_rmax=5):
+        super(PrettyPCF, self).__init__()
+
+        d = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * npoints))
+        self.device = device
+        self.rmax = d
+        self.nbbins = nbbins
+        rs = []
+        area = []
+        stepsize = n_rmax / nbbins
+        for i in range(nbbins):
+            radii = (i + 1) * stepsize * self.rmax
+            rs.append(radii)
+            inner = max(0, radii - 0.5 * self.rmax)
+            outer = radii + 0.5 * self.rmax
+            area.append(math.pi * (outer * outer - inner * inner))
+
+        self.rmin = rs[0]
+        ra = rs[0]
+        rb = rs[-1]
+        print('PCF Parameters:', self.rmin, self.rmax, npoints)
+
+        self.rs = torch.FloatTensor(np.array(rs)).to(device)
+        self.area = torch.FloatTensor(np.array(area)).to(device)
+        self.sigma = torch.FloatTensor([sigma]).to(device)
+        self.gf = (1.0 / (np.sqrt(math.pi) * self.sigma))
+
+    def gaussianKernel(self, x):
+        return self.gf * torch.exp(-(x * x) / (self.sigma * self.sigma))
+
+    def perimeter_weight(self, x, y):
+
+        full_angle = torch.ones(self.nbbins) * 2 * math.pi
+        full_angle = full_angle.to(self.device)
+        weights = torch.zeros_like(full_angle)
+
+        dx = x
+        dy = y
+        idx = self.rs > dx
+        if self.rs[idx].size(0) > 0:
+            alpha = torch.acos(dx / self.rs[idx])
+            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx))
+
+        dx = 1 - x
+        dy = y
+        idx = self.rs > dx
+        if self.rs[idx].size(0) > 0:
+            alpha = torch.acos(dx / self.rs[idx])
+            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx));
+
+        dx = y
+        dy = x
+        idx = self.rs > dx
+        if self.rs[idx].size(0) > 0:
+            alpha = torch.acos(dx / self.rs[idx])
+            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx));
+
+        dx = 1 - y
+        dy = x
+        idx = self.rs > dx
+        if self.rs[idx].size(0) > 0:
+            alpha = torch.acos(dx / self.rs[idx])
+            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx))
+
+        perimeter = torch.clamp(full_angle / (2 * math.pi), 0, 1)
+        idx = perimeter > 1e-4  # none zero
+        weights[idx] = 1 / perimeter[idx]
+        return weights
+
+    def forward(self, disks_a, disks_b, same_category, dimen=3, use_fnorm=True):
+        # print(disks_a.shape, disks_b.shape, same_category)
+        pcf = torch.zeros(self.nbbins, 2).to(self.device)
+        # hist = torch.zeros(self.nbbins)
+        pcf_lower = torch.ones(self.nbbins).to(self.device) * 1e4  # init with very large number
+        pcf_upper = torch.zeros(self.nbbins).to(self.device)
+
+        for i in range(disks_a.size(0)):
+            pi = disks_a[i]
+            if not same_category:
+                pj = disks_b
+                pi = pi.repeat(pj.size(0), 1)
+            else:
+                pj = torch.cat([disks_a[0:i], disks_a[i+1:]])   # ignore the i_th disk itself
+                pi = pi.repeat(pj.size(0), 1)
+
+            if use_fnorm:
+                d = utils.diskDistance(pi, pj, self.rmax)
+                val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins))
+                # print(val.shape, val[90:])
+            else:
+                # dis = utils.euclidean(pts_1, pts_2)
+                # diff = (self.rs.view(1, -1) - dis.view(-1, 1).repeat(1, self.nbbins)) / self.rmax
+                # val = self.gaussianKernel(diff)
+                pass
+
+            pts_w = pi[0:1].view(1, -1)  # same
+            weights = self.perimeter_weight(pts_w[:, 0], pts_w[:, 1])
+            # print(weights)
+            density = torch.sum(val * weights / self.area, 0)   # consistent with cpp results until now
+            density = density / disks_b.size(0)
+            pcf[:, 1] = pcf[:, 1] + density
+            pcf_lower = torch.min(pcf_lower, density)
+            pcf_upper = torch.max(pcf_upper, density)
+
+        pcf[:, 1] = pcf[:, 1] / disks_a.size(0)
+        pcf[:, 0] = self.rs / self.rmax
+        return pcf, pcf_lower, pcf_upper
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

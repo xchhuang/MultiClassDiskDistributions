@@ -113,7 +113,7 @@ int main(int argc, char *argv[]){
 
     // run algo
     algo.computeTarget();
-    return 0;
+
     // plot disk-based pcf: very weird
     auto result = algo.getTargetPCFplot();
     // std::cout << result.size() << std::endl;
@@ -124,11 +124,11 @@ int main(int argc, char *argv[]){
 
         std::ofstream out_tar_pts("../outputs/"+example_filename+"_pcf_"+std::to_string(id_a)+"_"+std::to_string(id_b)+".txt");
         // std::cout << plots.second[id].second.size() << std::endl;
-        for(unsigned long j = 0; j < result[j].second.size(); j++) {
+        for(unsigned long j = 0; j < result[i].second.size(); j++) {
             out_tar_pts << result[i].second[j].first << " ";
         }
         out_tar_pts << std::endl;
-        for(unsigned long j = 0; j < result[j].second.size(); j++) {
+        for(unsigned long j = 0; j < result[i].second.size(); j++) {
             out_tar_pts << result[i].second[j].second << " ";
         }
         out_tar_pts << std::endl;

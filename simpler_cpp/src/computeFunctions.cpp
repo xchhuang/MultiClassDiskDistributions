@@ -40,6 +40,7 @@ std::vector<float> compute_density(Disk const & pi, std::vector<Disk> const & ot
     for(unsigned long k=0; k<nSteps; k++)
     {
         density[k] *= weights[k] / areas[k];
+        // std::cout << "density[k]: " << density[k] << std::endl;
     }
     return density;
 }
@@ -142,6 +143,7 @@ std::vector<Target_pcf_type> compute_pcf(std::vector<Disk> const & disks_a, std:
         for(unsigned long k=0; k<nSteps; k++)
         {
             current[k]/=disks_b.size();
+            // std::cout << "current[k]: " << current[k] << std::endl;
             out[k].mean+=current[k];
             if(current[k] > out[k].max)
             {
@@ -151,12 +153,17 @@ std::vector<Target_pcf_type> compute_pcf(std::vector<Disk> const & disks_a, std:
             {
                 out[k].min = current[k];
             }
+            // std::cout << "out[k].min: " << out[k].min << std::endl;
+            // std::cout << "out[k].max: " << out[k].max << std::endl;
+               
         }
     }
     for(unsigned long k=0; k<nSteps; k++)
     {
         out[k].mean/=disks_a.size();
+        // std::cout << "out[k].mean: " << out[k].mean << std::endl;
         out[k].radius = radii[k]/rmax;
+        // std::cout << "out[k].radius: " << out[k].radius << std::endl;
     }
     return out;
 }

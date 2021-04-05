@@ -39,6 +39,7 @@ def main():
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     print(output_folder, config_filename, scene_name)
+    opt.output_folder = output_folder
     categories = defaultdict(list)
     relations = defaultdict(list)
 

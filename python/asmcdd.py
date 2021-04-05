@@ -8,7 +8,7 @@ from tqdm import tqdm
 import datetime
 import os
 import glob
-from computeFunctions import PCF
+from computeFunctions import PCF, PrettyPCF
 
 # np.random.seed(0)
 
@@ -44,8 +44,16 @@ class ASMCDD(torch.nn.Module):
                 # print(category_i, category_j)
                 if category_i == category_j:
                     same_category = True
-                cur_pcf = cur_pcf_model(target_disks, parent_disks, same_category=same_category, dimen=3, use_fnorm=True)
-                # print(cur_pcf.shape)
+                cur_pcf_mean, cur_pcf_min, cur_pcf_max = cur_pcf_model(target_disks, parent_disks, same_category=same_category, dimen=3, use_fnorm=True)
+
+                plt.figure(1)
+                plt.plot(cur_pcf_mean[:, 0].detach().cpu().numpy(), cur_pcf_mean[:, 1].detach().cpu().numpy())
+                plt.savefig(self.opt.output_folder+'/pcf_{:}_{:}'.format(category_i, category_j))
+                plt.clf()
+
+                pretty_pcf_model = PrettyPCF(self.device, nbbins=50, sigma=0.25, npoints=len(target_disks), n_rmax=5).to(self.device)
+                pretty_pcf = pretty_pcf_model(target_disks, parent_disks, same_category, dimen=3, use_form=False)
+                print(pretty_pcf.shape)
 
     def forward(self):
         for i in range(3):

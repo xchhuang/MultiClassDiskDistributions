@@ -102,6 +102,7 @@ def plot_txt(scene_name):
     pcfs, ids = read_pcf(scene_name)
     for i in range(pcfs.shape[0]):
         pcf = pcfs[i]
+#        print(pcf.shape)
         plt.plot(pcf[0,:], pcf[1,:])
     plt.legend(ids)
     # plt.ylim([0,2])
@@ -111,7 +112,7 @@ def plot_txt(scene_name):
 
 def main():
     # read_all_txt()
-    plot_txt('forest')
+    plot_txt('zerg_rush')
 
 
 if __name__ == '__main__':
