@@ -14,6 +14,7 @@ class PCF(torch.nn.Module):
         super(PCF, self).__init__()
 
         d = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * npoints))
+        self.device = device
         self.rmax = d
         self.nbbins = nbbins
         rs = []
@@ -42,6 +43,8 @@ class PCF(torch.nn.Module):
     def perimeter_weight(self, x, y):
 
         full_angle = torch.ones(self.nbbins) * 2 * math.pi
+        full_angle = full_angle.to(self.device)
+        weights = torch.zeros_like(full_angle)
 
         dx = x
         dy = y
@@ -71,7 +74,10 @@ class PCF(torch.nn.Module):
             alpha = torch.acos(dx / self.rs[idx])
             full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx))
 
-        return torch.clamp(full_angle / (2 * math.pi), 0, 1)
+        perimeter = torch.clamp(full_angle / (2 * math.pi), 0, 1)
+        idx = perimeter > 1e-4  # none zero
+        weights[idx] = 1 / perimeter[idx]
+        return weights
 
     def compute_weights(self, gen_pts, relation):
         # print (len(gen_pts))
@@ -181,20 +187,21 @@ class PCF(torch.nn.Module):
                 pj = torch.cat([disks_a[0:i], disks_a[i+1:]])   # ignore the i_th disk itself
                 pi = pi.repeat(pj.size(0), 1)
 
-            d = utils.diskDistance(pi, pj, self.rmax)
-            # print(self.rmax)
-            # pts_w = pi[0:1].view(1, -1)  # same
-            # weights = 1 / self.perimeter_weight(pts_w[:, 0], pts_w[:, 1])
 
-        #     if use_fnorm:
-        #         dis = utils.fnorm(pts_1, pts_2, self.rmax)
-        #         val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - dis.view(-1, 1).repeat(1, self.nbbins))
-        #     else:
-        #         dis = utils.euclidean(pts_1, pts_2)
-        #         diff = (self.rs.view(1, -1) - dis.view(-1, 1).repeat(1, self.nbbins)) / self.rmax
-        #         # print (i, diff[:,0])
-        #         val = self.gaussianKernel(diff)
-        #
+
+            if use_fnorm:
+                d = utils.diskDistance(pi, pj, self.rmax)
+                val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins))
+                # print(val.shape, val[90:])
+            else:
+                # dis = utils.euclidean(pts_1, pts_2)
+                # diff = (self.rs.view(1, -1) - dis.view(-1, 1).repeat(1, self.nbbins)) / self.rmax
+                # val = self.gaussianKernel(diff)
+                pass
+
+            pts_w = pi[0:1].view(1, -1)  # same
+            weights = self.perimeter_weight(pts_w[:, 0], pts_w[:, 1])
+            print(weights)
         #     # hist = hist + torch.sum(val,0)
         #
         #     cur_pcf = torch.sum(val, 0)  # weights

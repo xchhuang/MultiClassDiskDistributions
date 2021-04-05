@@ -93,7 +93,7 @@ float diskDistance(Disk const & a, Disk const & b, float rmax)
     float extent = std::max(d+r1+r2, 2*r1);
     float overlap = clip(r1+r2-d, 0.0f, 2*r2);
     float f = (extent-overlap+d+r1-r2);
-    std::cout << "f: " << f << std::endl;
+    // std::cout << "f: " << f << std::endl;
     if(d <= r1-r2)
     {
         return f/(4*r1 - 4*r2);

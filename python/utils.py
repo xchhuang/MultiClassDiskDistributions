@@ -17,7 +17,7 @@ def diskDistance(a, b, rmax):
     idx = overlap > 2 * r2
     overlap[idx] = 2 * r2[idx]
     f = extent - overlap + d + r1 - r2
-    print(f)
+    # print(f)
 
     idx1 = d <= r1 - r2
     d_norm = torch.zeros_like(d)

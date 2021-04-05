@@ -17,6 +17,7 @@ std::vector<float> compute_density(Disk const & pi, std::vector<Disk> const & ot
     {
         float perimeter = perimeter_weight(pi.x, pi.y, radii[k]);
         weights[k] = perimeter <= 0 ? 0.0f : 1.f/perimeter;
+        // std::cout << "weights[k]: " << weights[k] << std::endl;
     }
 
     // std::cout << "rmax: " << rmax << std::endl;
@@ -31,12 +32,14 @@ std::vector<float> compute_density(Disk const & pi, std::vector<Disk> const & ot
         for(unsigned long k=0; k<nSteps; k++)
         {
             float r = radii[k]/rmax;
-            density[k]+=gaussian_kernel(params.sigma, r-d);
+            float res = gaussian_kernel(params.sigma, r-d);
+            // std::cout << "res: " << res << std::endl;
+            density[k] += res;
         }
     }
     for(unsigned long k=0; k<nSteps; k++)
     {
-        density[k]*=weights[k]/areas[k];
+        density[k] *= weights[k] / areas[k];
     }
     return density;
 }
