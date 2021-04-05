@@ -30,7 +30,7 @@ def diskDistance(a, b, rmax):
 
     if d_norm[idx1].size(0) > 0:
         d_norm[idx1] = f[idx1] / (4 * r1[idx1] - 4 * r2[idx1])
-        print(d_norm[idx1])
+        # print(d_norm[idx1])
 
     idx2 = d > r1 - r2
     idx3 = d <= r1 + r2

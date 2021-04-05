@@ -136,10 +136,13 @@ int main(int argc, char *argv[]){
         
     }
 
+
     //Initialization
     std::vector<unsigned long> vs = algo.getFinalSizes(1);
     std::cout << "Total number of class: " << vs.size() << std::endl;
     algo.initialize(algo_params.domainLength, algo_params.error_delta);
+    
+    return 0;
     
     // write output to file
     std::ofstream out_init_pts("../outputs/"+example_filename+"_init.txt");
@@ -160,6 +163,7 @@ int main(int argc, char *argv[]){
     out_init_pts.close();
     std::cout << "Algo Done !" << std::endl;
 
+
     // plot point-based pretty pcf
     auto plots = algo.getPrettyTargetPCFplot(1);
     for(unsigned long id = 0; id < plots.second.size(); id++){
@@ -179,6 +183,8 @@ int main(int argc, char *argv[]){
         out_tar_pts.close();
     }
     std::cout << "Plot Done !" << std::endl;
+
+    return 0;
 }
 
 

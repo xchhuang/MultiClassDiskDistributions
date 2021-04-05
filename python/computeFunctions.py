@@ -178,8 +178,8 @@ class PCF(torch.nn.Module):
         # print(disks_a.shape, disks_b.shape, same_category)
         pcf = torch.zeros(self.nbbins, 2).double().to(self.device)
         # hist = torch.zeros(self.nbbins)
-        pcf_lower = torch.ones(self.nbbins).double().to(self.device) * 1e4  # init with very large number
-        pcf_upper = torch.zeros(self.nbbins).double().to(self.device)
+        pcf_lower = torch.ones(self.nbbins).double().to(self.device) * np.inf  # init with very large number
+        pcf_upper = torch.zeros(self.nbbins).double().to(self.device) * -np.inf
 
         for i in range(disks_a.size(0)):
             pi = disks_a[i]

@@ -59,6 +59,7 @@ std::vector<Target_pcf_type> ASMCDD::getCurrentPCF(unsigned long self){
 void ASMCDD::initialize(float domainLength, float e_delta){
     for(auto & category : (*categories.get()))
     {
+        // std::cout << domainLength << " " << e_delta << std::endl;    // 1, 0.0001
         category.initialize(domainLength, e_delta);
     }
 }

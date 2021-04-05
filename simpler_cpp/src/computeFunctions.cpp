@@ -46,7 +46,7 @@ std::vector<float> compute_density(Disk const & pi, std::vector<Disk> const & ot
     {
         // std::cout << "density[k]: " << density[k] << std::endl;
         density[k] *= weights[k] / areas[k];
-        std::cout << "weights[k]: " << weights[k] << std::endl;
+        // std::cout << "weights[k]: " << weights[k] << std::endl;
     }
     return density;
 }

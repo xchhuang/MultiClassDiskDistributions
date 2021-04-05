@@ -105,7 +105,7 @@ def plot_txt(scene_name):
 #        print(pcf.shape)
         plt.plot(pcf[0,:], pcf[1,:])
 #    plt.legend(ids)
-    # plt.ylim([0,2])
+#    plt.ylim([0, 10])
     plt.savefig('outputs/'+scene_name+'_pcf')
     plt.clf()
 
@@ -113,8 +113,10 @@ def plot_txt(scene_name):
 def main():
     # read_all_txt()
     plot_txt('praise_the_sun')
-#    plot_txt('zerg_rush')
-#    plot_txt('forest')
+    plot_txt('zerg_rush')
+    plot_txt('forest')
+    plot_txt('constrained')
+#    plot_txt('constrained_overlap')
 
 
 if __name__ == '__main__':

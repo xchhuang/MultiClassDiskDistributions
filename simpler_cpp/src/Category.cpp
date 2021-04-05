@@ -54,9 +54,9 @@ void Category::computeTarget(){
     for(unsigned long parent : relations)
     {   
         // std::cout << "id: " <<id << ", parent: " << parent << std::endl;
-        if (id != 0 || parent != 0) {     // TODO: remove this
-            continue;   
-        }
+        // if (id != 0 || parent != 0) {     // TODO: remove this
+        //     continue;   
+        // }
         float rmax = target_rmax[parent];
         std::cout << "id: " <<id << ", parent: " << parent << " " << rmax << std::endl;
         for(unsigned long i=0; i<nSteps; i++)
@@ -89,8 +89,11 @@ void Category::initialize(float domainLength, float e_delta){
     //Initialize the parents before this one (akin to the topological order)
     for(unsigned long parent : parents_id)
     {
+        // std::cout << "topological order: " << parent << std::endl;
         (*categories.get())[parent].initialize(domainLength, e_delta);
     }
+
+    // std::cout << "id: " << id << std::endl;
 
     std::vector<float> output_disks_radii;
 
@@ -115,6 +118,7 @@ void Category::initialize(float domainLength, float e_delta){
     std::sort(output_disks_radii.rbegin(), output_disks_radii.rend()); //Sort the radii in descending order
     finalSize = output_disks_radii.size();
 
+    std::cout << id << " " << output_disks_radii.size() << std::endl;
     float e_0 = 0;
     unsigned long max_fails=1000;
     unsigned long fails=0;
@@ -261,7 +265,7 @@ void Category::initialize(float domainLength, float e_delta){
                     }
                 }
                 n_accepted++;
-                std::cout << "n_accepted: " << n_accepted << std::endl;
+                // std::cout << "n_accepted: " << n_accepted << std::endl;
             }
 
         }
