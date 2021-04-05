@@ -1,44 +1,39 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import argparse
-from time import time
 import torch
-import math
-from tqdm import tqdm
-import datetime
-import os
-import glob
-
-from trainers.trainer import Trainer
-
-# np.random.seed(0)
-parser = argparse.ArgumentParser()
-parser.add_argument('--file', type=str, default='../data/c10.dat', help='point set file')
-parser.add_argument('--lr', type=float, default='1e-4', help='learning rate')
-parser.add_argument('--n_iter', type=int, default=200, help='number of iterations')
-
-opt = parser.parse_args()
-time_stamp = datetime.datetime.now().strftime("%y_%m_%d_%H_%M")
-opt.outd = 'results/test'
-if not os.path.exists(opt.outd):
-    os.makedirs(opt.outd)
-
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
-def plot_pts(title, pts):
-    plt.figure(1)
-    ax = plt.gca()
-    ax.cla()
-    plt.scatter(pts[:, 0], pts[:, 1], s=5, c='r')
-    ax.set_aspect('equal')
-    plt.savefig(opt.outd + '/' + title)
-    plt.clf()
+def diskDistance(a, b, rmax):
+    n_dim = a.size(-1)
+    # print(a.shape)
+    # print(b.shape)
+    radius = torch.cat((a[:, n_dim - 1:n_dim], b[:, n_dim - 1:n_dim]), dim=1)
+    # print(radius)
+    r1 = torch.max(radius, dim=1)[0] / rmax
+    r2 = torch.min(radius, dim=1)[0] / rmax
+    # print(r1, r2)
+    d = torch.norm(a[:, 0:2] - b[:, 0:2], dim=1) / rmax
+    extent = torch.max(d + r1 + r2, 2 * r1)
+    overlap = torch.clamp(r1 + r2 - d, 0)
+    idx = overlap > 2 * r2
+    overlap[idx] = 2 * r2[idx]
+    f = extent - overlap + d + r1 - r2
+    print(f)
 
+    idx1 = d <= r1 - r2
+    d_norm = torch.zeros_like(d)
 
-def main():
-    Trainer(device=device)
+    # print (d.size())
+    d_norm[idx1] = f[idx1] / (4 * r1[idx1] - 4 * r2[idx1])
+    # print (d[idx1].size())
 
+    idx2 = d > r1 - r2
+    idx3 = d <= r1 + r2
+    idx23 = idx2 * idx3
+    # print (d[idx23].size())
+    d_norm[idx23] = f[idx23] - 4 * r1[idx23] + 7 * r2[idx23] / (3 * r2[idx23])
 
-if __name__ == "__main__":
-    main()
+    idx4 = d > r1 + r2
+    # print (d[idx4].size())
+    d_norm[idx4] = f[idx4] - 4 * r1[idx4] - 2 * r2[idx4] + 3
+
+    return d_norm

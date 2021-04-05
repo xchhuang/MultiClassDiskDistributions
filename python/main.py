@@ -16,7 +16,7 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 
 # np.random.seed(0)
 parser = argparse.ArgumentParser()
-parser.add_argument('--config_filename', type=str, default='configs/forest.txt', help='config file name')
+parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.txt', help='config file name')
 opt = parser.parse_args()
 
 

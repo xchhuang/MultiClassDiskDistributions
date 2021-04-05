@@ -18,10 +18,14 @@ std::vector<float> compute_density(Disk const & pi, std::vector<Disk> const & ot
         float perimeter = perimeter_weight(pi.x, pi.y, radii[k]);
         weights[k] = perimeter <= 0 ? 0.0f : 1.f/perimeter;
     }
+
+    // std::cout << "rmax: " << rmax << std::endl;
     for(unsigned long j=0; j<others.size(); j++)
     {
-        if(j == same_category_index)
+        if (j == same_category_index) {  // compute pcf, not search itself
+            // std::cout << "compute_density: " << j << " " << same_category_index << " " << others.size() << std::endl;
             continue;
+        }
         auto & pj = others[j];
         float d = diskDistance(pi, pj, rmax);
         for(unsigned long k=0; k<nSteps; k++)

@@ -6,11 +6,11 @@ import math
 from tqdm import tqdm
 import os
 import glob
+import utils
 
 
 class PCF(torch.nn.Module):
-    def __init__(self, device, nbbins=50, sigma=0.25, npoints=100,
-                 n_rmax=5):
+    def __init__(self, device, nbbins=50, sigma=0.25, npoints=100, n_rmax=5):
         super(PCF, self).__init__()
 
         d = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * npoints))
@@ -164,125 +164,102 @@ class PCF(torch.nn.Module):
         # print (E)
         return E
 
-    # def forward(self, pts, c, t, c1, c2, dimen=3, use_fnorm=False, mean_pcf=False):
-    def forward(self, pts, c, t, dimen=3, use_fnorm=True, mean_pcf=False):
-
+    # def forward(self, pts, c, t, dimen=3, use_fnorm=True, mean_pcf=False):
+    def forward(self, disks_a, disks_b, same_category, dimen=3, use_fnorm=True, ):
+        # print(disks_a.shape, disks_b.shape, same_category)
         pcf = torch.zeros(self.nbbins, 2)
         hist = torch.zeros(self.nbbins)
-
         pcf_lower = torch.ones(self.nbbins) * 1e4
         pcf_upper = torch.zeros(self.nbbins)
 
-        # if mean_pcf:
-        #     denom = pts.size(0) * pts.size(0)
-        #     pts[0:10,...] = pts[0:10,...].detach()
-        #     for i in range(pts.size(0)):
-
-        #         pts_2 = torch.cat((pts[i+1:,0:dimen],pts[:i,0:dimen]),dim=0)
-        #         pts_1 = pts[i,0:dimen].repeat(pts_2.size(0),1)
-
-        #         if use_fnorm:
-        #             dis = utils.fnorm(pts_1, pts_2, self.rmax)
-        #             val = self.gaussianKernel( self.rs.view(1,-1)/self.rmax - dis.view(-1,1).repeat(1,self.nbbins) )
-
-        #         else:
-        #             dis = utils.euclidean(pts_1, pts_2)
-        #             val = self.gaussianKernel( (self.rs.view(1,-1) - dis.view(-1,1).repeat(1,self.nbbins))/self.rmax )
-
-        #         hist = hist + torch.sum(val,0)
-        #     # cov = 1.0 - ((2.0*self.rs)/math.pi)*2.0 + ((self.rs*self.rs)/math.pi)
-        #     # factor = 2.0*math.pi*self.rs/self.rmax#*cov
-        #     pcf[:,1] = hist / (denom * self.area)
-        #     pcf[:,0] = self.rs / self.rmax
-        #     return pcf
-
-        pts_c = pts[pts[:, 3] == c]
-        # print (pts_c.shape)
-        # pts_c = pts_c[0:10]
-        # print (c2)
-        # print (pts_c.shape)
-        pts_t = pts[pts[:, 3] == t]
-        # print(pts, c, t)
-        # if t != c:
-        #     pts_t = pts_t[c1]
-        #     pts_c = pts_c[c2]
-        # else:
-        #     pts_c = pts_c[c2]
-        #     pts_t = pts_t[c2]
-        # npoints = (pts_t.size(0)+pts_c.size(0))/2
-        npoints = pts_t.size(0)
-
-        # print (pts_c.size(0), pts_t.size(0))
-        denom = npoints * npoints
-
-        # for i in range(pts_c.size(0)):
-        #     pts_1 = pts_c[i,0:dimen].repeat(self.nbbins,1)
-        #     dx = pts_1[0:1,0]
-        #     dy = pts_1[0:1,1]
-        # weights = self.perimeter_weight(dx, dy)
-
-        # print (weights)
-
-        for i in range(pts_c.size(0)):
-
-            if t != c:
-                # pts_2 = pts_t[:,0:dimen]
-                pts_2 = pts_t[:, 0:dimen]
-
-                pts_1 = pts_c[i, 0:dimen].repeat(pts_2.size(0), 1)
-                pts_2 = pts_2.detach()
-                denom = pts_c.size(0) * pts_t.size(0)
-                denorm_1 = pts_c.size(0)
-                denorm_2 = pts_t.size(0)
-                # print (pts_1.size(), pts_2.size())
+        for i in range(disks_a.size(0)):
+            pi = disks_a[i]
+            if not same_category:
+                pj = disks_b
+                pi = pi.repeat(pj.size(0), 1)
             else:
-                # pts_2 = torch.cat((pts_c[:i,0:dimen],pts_c[i+1:,0:dimen]),dim=0)
-                # print (pts_c.shape, c, t)
-                pts_2 = torch.cat((pts_c[:i, 0:dimen], pts_c[i + 1:, 0:dimen]), dim=0)
+                pj = torch.cat([disks_a[0:i], disks_a[i+1:]])   # ignore the i_th disk itself
+                pi = pi.repeat(pj.size(0), 1)
 
-                pts_1 = pts_c[i, 0:dimen].repeat(pts_2.size(0), 1)
-                denorm_1 = npoints
-                denorm_2 = npoints
+            d = utils.diskDistance(pi, pj, self.rmax)
+            # print(self.rmax)
+            # pts_w = pi[0:1].view(1, -1)  # same
+            # weights = 1 / self.perimeter_weight(pts_w[:, 0], pts_w[:, 1])
 
-            pts_w = pts_1[0, 0:dimen].view(1, -1)  # same
-            weights = 1 / self.perimeter_weight(pts_w[:, 0], pts_w[:, 1])
-
-            # print (weights)
-
-            # if c != t:
-            # print('use_fnorm:', use_fnorm)
-            if use_fnorm:
-                dis = utils.fnorm(pts_1, pts_2, self.rmax)
-                val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - dis.view(-1, 1).repeat(1, self.nbbins))
-            else:
-                dis = utils.euclidean(pts_1, pts_2)
-                diff = (self.rs.view(1, -1) - dis.view(-1, 1).repeat(1, self.nbbins)) / self.rmax
-                # print (i, diff[:,0])
-                val = self.gaussianKernel(diff)
-
-            # hist = hist + torch.sum(val,0)
-
-            cur_pcf = torch.sum(val, 0)  # weights
-            hist = hist + cur_pcf
-
-            pcf_lower = torch.min(pcf_lower, cur_pcf / (denorm_2 * self.area))
-            pcf_upper = torch.max(pcf_upper, cur_pcf / (denorm_2 * self.area))
-            # if i > 7:
-            #     break
-
-        # cov = 1.0 - ((2.0*self.rs)/math.pi)*2.0 + ((self.rs*self.rs)/math.pi)
-        # factor = 2.0*math.pi*self.rs*cov
-        # factor = 1.0/factor
-        # pcf[:,1] *= factor
-        # print (self.area)
-        pcf[:, 1] = hist / (denom * self.area)
-        pcf[:, 0] = self.rs / self.rmax
-
-        # print ('pcf_lower:',pcf_lower)
-        # print ('pcf_upper:',pcf_upper)
-        pcf = torch.cat((pcf, pcf_lower.view(-1, 1), pcf_upper.view(-1, 1)), dim=1)
-        # print (pcf.size())
+        #     if use_fnorm:
+        #         dis = utils.fnorm(pts_1, pts_2, self.rmax)
+        #         val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - dis.view(-1, 1).repeat(1, self.nbbins))
+        #     else:
+        #         dis = utils.euclidean(pts_1, pts_2)
+        #         diff = (self.rs.view(1, -1) - dis.view(-1, 1).repeat(1, self.nbbins)) / self.rmax
+        #         # print (i, diff[:,0])
+        #         val = self.gaussianKernel(diff)
+        #
+        #     # hist = hist + torch.sum(val,0)
+        #
+        #     cur_pcf = torch.sum(val, 0)  # weights
+        #     hist = hist + cur_pcf
+        #
+        #     pcf_lower = torch.min(pcf_lower, cur_pcf / (denorm_2 * self.area))
+        #     pcf_upper = torch.max(pcf_upper, cur_pcf / (denorm_2 * self.area))
+        #     # if i > 7:
+        #     #     break
+        #
+        # # cov = 1.0 - ((2.0*self.rs)/math.pi)*2.0 + ((self.rs*self.rs)/math.pi)
+        # # factor = 2.0*math.pi*self.rs*cov
+        # # factor = 1.0/factor
+        # # pcf[:,1] *= factor
+        # # print (self.area)
+        # pcf[:, 1] = hist / (denom * self.area)
+        # pcf[:, 0] = self.rs / self.rmax
+        #
+        # # print ('pcf_lower:',pcf_lower)
+        # # print ('pcf_upper:',pcf_upper)
+        # pcf = torch.cat((pcf, pcf_lower.view(-1, 1), pcf_upper.view(-1, 1)), dim=1)
+        # # print (pcf.size())
         return pcf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # class PCFLearner(torch.nn.Module):

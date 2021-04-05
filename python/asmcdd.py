@@ -18,15 +18,34 @@ class ASMCDD(torch.nn.Module):
         super(ASMCDD, self).__init__()
         self.device = device
         self.opt = opt
-        # print(categories[0])
-        # self.w1 = torch.nn.Parameter(torch.from_numpy(np.array(categories[0])).float().to(device))
-        # self.w2 = torch.nn.Parameter(torch.from_numpy(np.array(categories[1])).float().to(device))
-        # self.w3 = torch.nn.Parameter(torch.from_numpy(np.array(categories[2])).float().to(device))
+        self.categories = categories
+        self.relations = relations
 
         self.w = torch.nn.ParameterList()
         for k in categories.keys():
             self.w.append(torch.nn.Parameter(torch.from_numpy(np.array(categories[k])).float()))
-        # self.w = torch.nn.ParameterList([self.w1, self.w2, self.w2])
+        self.pcf_model = []
+        self.pcf = []
+        self.computeTarget()
+
+    def computeTarget(self):
+        n_classes = len(self.w)
+        for i in range(n_classes):
+            category_i = i
+            target_disks = self.categories[i]
+            for j in range(len(self.relations[i])):
+                category_j = self.relations[i][j]
+                parent_disks = self.categories[category_j]
+                # print(len(target_disk), len(parent_disk))
+                cur_pcf_model = PCF(self.device, nbbins=50, sigma=0.25, npoints=len(target_disks), n_rmax=5).to(self.device)
+                target_disks = torch.from_numpy(np.array(target_disks)).float().to(self.device)
+                parent_disks = torch.from_numpy(np.array(parent_disks)).float().to(self.device)
+                same_category = False
+                # print(category_i, category_j)
+                if category_i == category_j:
+                    same_category = True
+                cur_pcf = cur_pcf_model(target_disks, parent_disks, same_category=same_category, dimen=3, use_fnorm=True)
+                # print(cur_pcf.shape)
 
     def forward(self):
         for i in range(3):

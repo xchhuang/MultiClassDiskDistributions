@@ -25,4 +25,4 @@ class Trainer:
 
     def train(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
-        self.model()
+        # self.model()

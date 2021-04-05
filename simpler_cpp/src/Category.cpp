@@ -115,7 +115,7 @@ void Category::initialize(float domainLength, float e_delta){
     unsigned long max_fails=1000;
     unsigned long fails=0;
     unsigned long n_accepted=0;
-    std::cout << disks.size() << " " << output_disks_radii.size() << std::endl;
+    // std::cout << disks.size() << " " << output_disks_radii.size() << std::endl;
     disks.reserve(output_disks_radii.size());
     
     auto nSteps = (unsigned long)(params->limit/params->step);
@@ -195,7 +195,7 @@ void Category::initialize(float domainLength, float e_delta){
         if(fails > max_fails)
         {
             //We have exceeded the 1000 fails threshold, we switch to a parallel grid search
-            std::cout << "Grid searching : " << id <<std::endl;
+            // std::cout << "Grid searching : " << id <<std::endl;
             //Grid search
             constexpr unsigned long N_I = 100;
             constexpr unsigned long N_J = 100;
@@ -257,7 +257,7 @@ void Category::initialize(float domainLength, float e_delta){
                     }
                 }
                 n_accepted++;
-                std::cout << "n_accepted: " << n_accepted << std::endl;
+                // std::cout << "n_accepted: " << n_accepted << std::endl;
             }
 
         }
