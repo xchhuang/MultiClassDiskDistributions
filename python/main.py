@@ -35,6 +35,7 @@ opt = parser.parse_args()
 def main():
     config_filename = opt.config_filename
     scene_name = config_filename.split('/')[-1].split('.')[0]
+    opt.scene_name = scene_name
     output_folder = 'results/' + scene_name
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)

@@ -41,7 +41,7 @@ void Category::computeTarget(){
     target_rmax.insert(std::make_pair(id, computeRmax(target_disks.size())));
     for(unsigned long parent : parents_id)
     {
-        // std::cout << "id: " <<id << ", parent: " << parent << std::endl;
+        // std::cout << "id: " << id << ", parent: " << parent << std::endl;
         target_rmax.insert(std::make_pair(parent, computeRmax(target_disks.size()/*+(*categories.get())[parent].target_disks.size()*/)));
     }
     std::vector<float> area, radii;
@@ -53,8 +53,11 @@ void Category::computeTarget(){
 
     for(unsigned long parent : relations)
     {   
-        // std::cout << "id: " <<id << ", parent: " << parent << std::endl;
+        // if (id == parent) {     // TODO: remove this
+        //     continue;   
+        // }
         float rmax = target_rmax[parent];
+        std::cout << "id: " <<id << ", parent: " << parent << " " << rmax << std::endl;
         for(unsigned long i=0; i<nSteps; i++)
         {
             float r = (i+1)*params->step;
@@ -257,7 +260,7 @@ void Category::initialize(float domainLength, float e_delta){
                     }
                 }
                 n_accepted++;
-                // std::cout << "n_accepted: " << n_accepted << std::endl;
+                std::cout << "n_accepted: " << n_accepted << std::endl;
             }
 
         }

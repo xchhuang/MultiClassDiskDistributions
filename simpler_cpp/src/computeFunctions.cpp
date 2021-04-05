@@ -183,15 +183,19 @@ std::vector<float> compute_pretty_pcf(std::vector<Disk> const & disks_a, std::ve
             {
                 if(&pi != &pj)
                 {
+
                     density[k]+=gaussian_kernel(params.sigma, (radii[k]-euclidian(pi, pj))/rmax);
                 }
             }
+            // std::cout << "density[k]: " << density[k] << std::endl;
             pcf[k]+=density[k]*(weight[k] > 4 ? 4 : weight[k])/disks_a.size();
+            // std::cout << "pcf[k]: " << pcf[k] << std::endl;
         }
     }
     for(unsigned long k=0; k<pcf.size(); k++)
     {
         pcf[k]/=area[k]*disks_b.size();
+        // std::cout << "pcf[k]: " << pcf[k] << std::endl;
     }
     return pcf;
 }
