@@ -16,6 +16,7 @@ std::vector<float> compute_density(Disk const & pi, std::vector<Disk> const & ot
     for(unsigned long k=0; k<nSteps; k++)
     {
         float perimeter = perimeter_weight(pi.x, pi.y, radii[k]);
+        // std::cout << "perimeter: " << perimeter << std::endl;
         weights[k] = perimeter <= 0 ? 0.0f : 1.f/perimeter;
         // std::cout << "weights[k]: " << weights[k] << std::endl;
     }
@@ -32,15 +33,20 @@ std::vector<float> compute_density(Disk const & pi, std::vector<Disk> const & ot
         for(unsigned long k=0; k<nSteps; k++)
         {
             float r = radii[k]/rmax;
+            // std::cout << "r: " << r << std::endl;
             float res = gaussian_kernel(params.sigma, r-d);
-            // std::cout << "res: " << res << std::endl;
+            // std::cout << "r-d: " << j << " " << k << " " << r-d << std::endl;
+            // std::cout << "res2: " << j << " " << k << " " << res << std::endl;
+            
             density[k] += res;
         }
+        // std::cout << "diskDistance: " << j << " " << same_category_index << " " << d << std::endl;
     }
     for(unsigned long k=0; k<nSteps; k++)
     {
-        density[k] *= weights[k] / areas[k];
         // std::cout << "density[k]: " << density[k] << std::endl;
+        density[k] *= weights[k] / areas[k];
+        std::cout << "weights[k]: " << weights[k] << std::endl;
     }
     return density;
 }
@@ -139,6 +145,7 @@ std::vector<Target_pcf_type> compute_pcf(std::vector<Disk> const & disks_a, std:
     bool same_category = &disks_a == &disks_b;
     for(unsigned long i=0; i<disks_a.size(); i++)
     {
+        // std::cout << "same_category: " << same_category << std::endl;
         auto current = compute_density(disks_a[i], disks_b, area, radii, rmax, params, same_category ? i : disks_b.size(), disks_b.size());
         for(unsigned long k=0; k<nSteps; k++)
         {

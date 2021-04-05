@@ -109,6 +109,7 @@ inline float euclidian(Disk const & a, Disk const & b)
 inline float gaussian_kernel(float sigma, float x)
 {
     static const float sqrtpi = std::sqrt(M_PI);
+    // std::cout << "exp:" << x << std::endl;
     return std::exp(-((x*x)/(sigma*sigma)))/(sqrtpi*sigma);
 }
 

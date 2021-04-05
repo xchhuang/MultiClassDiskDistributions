@@ -53,9 +53,10 @@ void Category::computeTarget(){
 
     for(unsigned long parent : relations)
     {   
-        // if (id == parent) {     // TODO: remove this
-        //     continue;   
-        // }
+        // std::cout << "id: " <<id << ", parent: " << parent << std::endl;
+        if (id != 0 || parent != 0) {     // TODO: remove this
+            continue;   
+        }
         float rmax = target_rmax[parent];
         std::cout << "id: " <<id << ", parent: " << parent << " " << rmax << std::endl;
         for(unsigned long i=0; i<nSteps; i++)

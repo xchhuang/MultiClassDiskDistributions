@@ -89,18 +89,31 @@ float diskDistance(Disk const & a, Disk const & b, float rmax)
     }
     r1/=rmax;
     r2/=rmax;
+    // std::cout << "r1: " << r1 << std::endl;
+    // std::cout << "r2: " << r2 << std::endl;
+    
     float d = euclidian(a,b)/rmax;
+    // std::cout << "d: " << d << std::endl;
+    
     float extent = std::max(d+r1+r2, 2*r1);
+    // std::cout << "extent: " << extent << std::endl;
+
     float overlap = clip(r1+r2-d, 0.0f, 2*r2);
+    // std::cout << "overlap: " << overlap << std::endl;
+    
     float f = (extent-overlap+d+r1-r2);
     // std::cout << "f: " << f << std::endl;
-    if(d <= r1-r2)
-    {
+
+    if (d <= r1-r2) {
+        // std::cout << "d <= r1-r2: " << f/(4*r1 - 4*r2) << std::endl;
         return f/(4*r1 - 4*r2);
-    }else if(d <= r1+r2)
-    {
+
+    } else if(d <= r1+r2) {
+        // std::cout << "d <= r1+r2: " << (f - 4*r1 + 7*r2)/(3*r2) << std::endl;
         return (f - 4*r1 + 7*r2)/(3*r2);
-    }else{
+
+    } else {
+        // std::cout << "else: " << f - 4*r1 - 2*r2 + 3 << std::endl;
         return f - 4*r1 - 2*r2 + 3;
     }
 }
