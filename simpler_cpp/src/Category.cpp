@@ -194,7 +194,7 @@ void Category::initialize(float domainLength, float e_delta){
                 // std::cout << "disks: " << disks.size() << std::endl;     // both increasing
                 // std::cout << "others: " << others[relation].disks.size() << std::endl;
                 float ce = compute_error(test_pcf, current_pcf[relation], target_pcf[relation]);
-                return;
+                // return;
                 if(e < ce) {
                     
                     //Disk is rejected if the error is too high
