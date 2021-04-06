@@ -171,20 +171,32 @@ void Category::initialize(float domainLength, float e_delta){
     std::map<unsigned long, Contribution> contributions;
 
     do{
+        // std::cout << "Error: " << id <<std::endl;
         bool rejected=false;
         float e = e_0 + e_delta*fails;
+        // std::cout << "e: " << n_accepted << " " << e << std::endl;
         //Generate a random disk
-        Disk d_test(randf(rand_gen), randf(rand_gen), output_disks_radii[n_accepted]);
+        float rx = randf(rand_gen);
+        float ry = randf(rand_gen);
+        // rx = 0.5;
+        // ry = 0.5;
+        Disk d_test(rx, ry, output_disks_radii[n_accepted]);
+        // std::cout << "n_accepted: " << n_accepted << std::endl;
         for(auto relation : relations)
         {
             Contribution test_pcf;
             if(!disks.empty() || relation != id)
             {
                 //Computing the contribution of this disk to the pcf for this relation
+                std::cout << "n_accepted: " << n_accepted << std::endl;
                 test_pcf = compute_contribution(d_test, others[relation].disks, weights[relation], target_radii[relation], target_areas[relation], target_rmax[relation], parameters, relation == id ? n_accepted : MAX_LONG,relation == id ? 2*output_disks_radii.size()*output_disks_radii.size() : 2*output_disks_radii.size()*others[relation].disks.size(), diskfact);
                 
-                if(e < compute_error(test_pcf, current_pcf[relation], target_pcf[relation]))
-                {
+                // std::cout << "disks: " << disks.size() << std::endl;     // both increasing
+                // std::cout << "others: " << others[relation].disks.size() << std::endl;
+                float ce = compute_error(test_pcf, current_pcf[relation], target_pcf[relation]);
+                return;
+                if(e < ce) {
+                    
                     //Disk is rejected if the error is too high
                     rejected=true;
                     break;
@@ -226,7 +238,7 @@ void Category::initialize(float domainLength, float e_delta){
         if(fails > max_fails)
         {
             //We have exceeded the 1000 fails threshold, we switch to a parallel grid search
-            // std::cout << "Grid searching : " << id <<std::endl;
+            std::cout << "Grid searching : " << n_accepted << "/" << output_disks_radii.size() <<std::endl;
             //Grid search
             constexpr unsigned long N_I = 100;
             constexpr unsigned long N_J = 100;
@@ -288,7 +300,7 @@ void Category::initialize(float domainLength, float e_delta){
                     }
                 }
                 n_accepted++;
-                // std::cout << "n_accepted: " << n_accepted << std::endl;
+                std::cout << "n_accepted: " << n_accepted << std::endl;
             }
 
         }

@@ -7,6 +7,68 @@ from tqdm import tqdm
 import os
 import glob
 import utils
+from utils import Contribution
+
+
+def compute_contribution(device, nbbins, pi, others, other_weights, cur_pcf_model, same_category, target_size, diskfactor):
+    out = Contribution(device, nbbins)
+    out.weights = cur_pcf_model.perimeter_weight(pi[0], pi[1], diskfactor)
+    if len(others) == 0:
+        return out
+    pj = others
+    pi = pi.unsqueeze(0).repeat(pj.size(0), 1)
+    # print('pipj:', pi.shape, pj.shape)
+    rmax = cur_pcf_model.rmax
+
+    nbbins = cur_pcf_model.nbbins
+    d = utils.diskDistance(pi, pj, rmax)
+    rs = cur_pcf_model.rs
+    area = cur_pcf_model.area
+    # print(rs.shape, d.shape)
+    val = cur_pcf_model.gaussianKernel(rs.view(1, -1) / rmax - d.view(-1, 1).repeat(1, nbbins))
+    out.pcf = torch.sum(val, 0)
+    # print(out.pcf)
+    out.contribution = torch.sum(val * other_weights, 0)
+    # print(out.contribution)
+    out.pcf *= out.weights / area
+    out.contribution = out.pcf + out.contribution / area
+    out.pcf /= len(others)
+    # print(out.contribution.shape, target_size)
+    out.contribution /= target_size
+    # print(out.pcf)
+    return out
+
+
+def filter_nan(x):
+    '''
+    :param x: torch.Tensor: (nbbins,)
+    :return: torch.Tensor without nan(changed to -inf)
+    :comment: use -inf so nan will not influence the mamximum value
+    '''
+    y = torch.where(torch.isnan(x), torch.full_like(x, -np.inf), x)
+    return y
+
+
+def compute_error(contribution, current_pcf, target_pcf):
+    error_mean = -np.inf
+    error_min = -np.inf
+    error_max = -np.inf
+    target_mean = target_pcf[:, 1]
+    target_min = target_pcf[:, 2]
+    target_max = target_pcf[:, 3]
+    # print(target_pcf)
+    x = (current_pcf + contribution.contribution - target_mean) / target_mean
+    error_mean = max(filter_nan(x).max().item(), error_mean)
+    # print(error_mean)
+    x = (contribution.pcf - target_max) / target_max
+    error_max = max(filter_nan(x).max().item(), error_max)
+
+    x = (target_min - contribution.pcf) / target_min
+    error_min = max(filter_nan(x).max().item(), error_min)
+
+    ce = error_mean + max(error_max, error_min)
+    # print(error_mean, error_min, error_max)
+    return ce
 
 
 class PCF(torch.nn.Module):
@@ -42,38 +104,42 @@ class PCF(torch.nn.Module):
         # print(x)
         return self.gf * torch.exp(-((x * x)/(self.sigma * self.sigma)))
 
-    def perimeter_weight(self, x, y):
+    def perimeter_weight(self, x, y, diskfact=1):
 
         full_angle = torch.ones(self.nbbins).double() * 2 * math.pi
         full_angle = full_angle.to(self.device)
         weights = torch.zeros_like(full_angle)
+        rs = self.rs
+        x *= diskfact
+        y *= diskfact
+        rs *= diskfact
 
         dx = x
         dy = y
-        idx = self.rs > dx
-        if self.rs[idx].size(0) > 0:
-            alpha = torch.acos(dx / self.rs[idx])
+        idx = rs > dx
+        if rs.size(0) > 0:
+            alpha = torch.acos(dx / rs[idx])
             full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx))
 
         dx = 1 - x
         dy = y
-        idx = self.rs > dx
-        if self.rs[idx].size(0) > 0:
-            alpha = torch.acos(dx / self.rs[idx])
+        idx = rs > dx
+        if rs[idx].size(0) > 0:
+            alpha = torch.acos(dx / rs[idx])
             full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx));
 
         dx = y
         dy = x
-        idx = self.rs > dx
-        if self.rs[idx].size(0) > 0:
-            alpha = torch.acos(dx / self.rs[idx])
+        idx = rs > dx
+        if rs[idx].size(0) > 0:
+            alpha = torch.acos(dx / rs[idx])
             full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx));
 
         dx = 1 - y
         dy = x
-        idx = self.rs > dx
-        if self.rs[idx].size(0) > 0:
-            alpha = torch.acos(dx / self.rs[idx])
+        idx = rs > dx
+        if rs[idx].size(0) > 0:
+            alpha = torch.acos(dx / rs[idx])
             full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx))
 
         perimeter = torch.clamp(full_angle / (2 * math.pi), 0, 1)
@@ -179,7 +245,7 @@ class PCF(torch.nn.Module):
         pcf = torch.zeros(self.nbbins, 2).double().to(self.device)
         # hist = torch.zeros(self.nbbins)
         pcf_lower = torch.ones(self.nbbins).double().to(self.device) * np.inf  # init with very large number
-        pcf_upper = torch.zeros(self.nbbins).double().to(self.device) * -np.inf
+        pcf_upper = torch.ones(self.nbbins).double().to(self.device) * -np.inf
 
         for i in range(disks_a.size(0)):
             pi = disks_a[i]

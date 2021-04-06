@@ -87,13 +87,20 @@ Contribution compute_contribution(Disk const & pi, std::vector<Disk> const & oth
     {
         float perimeter = perimeter_weight(pi.x, pi.y, radii[k], diskfactor);
         out.weights[k] = perimeter <= 0 ? 0.0f : 1.f/perimeter;
+        // std::cout << "out.weights[k]: " << k << " " << out.weights[k]  << std::endl;
     }
     if(others.empty())
         return out;
+
+    // std::cout << "target_size: " << target_size << std::endl;
+    // std::cout << "others.size(): " << others.size() << std::endl;
+    
     for(unsigned long j=0; j<others.size(); j++)
     {
-        if( j == same_category_index)
+        if( j == same_category_index) {
+            // std::cout << "same_category_index: " << j << " " << same_category_index << std::endl;
             continue;
+        }
         auto & pj = others[j];
         float d = diskDistance(pi, pj, rmax);
         for(unsigned long k=0; k<nSteps; k++)
@@ -104,14 +111,19 @@ Contribution compute_contribution(Disk const & pi, std::vector<Disk> const & oth
             out.contribution[k]+= res*other_weights[j][k];
         }
     }
-    for(unsigned long k=0; k<nSteps; k++)
-    {
+
+    // for(unsigned long k=0; k<nSteps; k++) {
+    //     // std::cout << "out.pcf[k]: " << k << " " << out.pcf[k] << std::endl;
+    //     std::cout << "out.contribution[k]: " << k << " " << out.contribution[k] << std::endl;
+           
+    // }
+    
+    for(unsigned long k=0; k<nSteps; k++) {
         out.pcf[k]*=out.weights[k]/areas[k];
         out.contribution[k] = out.pcf[k] + out.contribution[k]/areas[k];
-
         out.pcf[k]/=others.size();
         out.contribution[k]/=target_size;
-
+        // std::cout << "out.pcf[k]: " << k << " " << out.pcf[k] << std::endl;
     }
 
     return out;
@@ -120,22 +132,41 @@ Contribution compute_contribution(Disk const & pi, std::vector<Disk> const & oth
 float compute_error(Contribution const & contribution, std::vector<float> const & currentPCF, std::vector<Target_pcf_type> const & target)
 {
     // new_mean
-    float error_mean=0;
-    float error_min=0;
-    float error_max=0;
-    for(unsigned long k=0; k<currentPCF.size(); k++)
-    {
-        error_mean = std::max((currentPCF[k]+contribution.contribution[k] - target[k].mean)/target[k].mean, error_mean);
+    float error_mean = -1e10;
+    // std::cout << error_mean << std::endl;
+    float error_min = -1e10;
+    float error_max = -1e10;
+    for(unsigned long k=0; k<currentPCF.size(); k++) {
+        float x = (currentPCF[k]+contribution.contribution[k] - target[k].mean) / target[k].mean;
+        if (x != x) {
+            continue;
+        }
+        // std::cout << "mean: " << x << std::endl;
+        error_mean = std::max(x, error_mean);
+        // std::cout << "target[k].mean: " << k << " " << target[k].mean << std::endl;
+        // std::cout << "error_mean: " << k << " " << error_mean << std::endl;
+           
     }
-    for(unsigned long k=0; k<currentPCF.size(); k++)
-    {
-        error_max = std::max((contribution.pcf[k] - target[k].max)/target[k].max, error_max);
+    for(unsigned long k=0; k<currentPCF.size(); k++) {
+        float x = (contribution.pcf[k] - target[k].max) / target[k].max;
+        if (x != x) {
+            continue;
+        }
+        error_max = std::max(x, error_max);
+        // std::cout << "error_max: " << k << " " << error_max << std::endl;
     }
-    for(unsigned long k=0; k<currentPCF.size(); k++)
-    {
-        error_min = std::max((target[k].min - contribution.pcf[k])/target[k].min, error_min);
+    for(unsigned long k=0; k<currentPCF.size(); k++) {
+        float x = (target[k].min - contribution.pcf[k]) / target[k].min;
+        if (x != x) {
+            continue;
+        }
+        error_min = std::max(x, error_min);
     }
-    return error_mean+std::max(error_max, error_min);
+    
+    float ce = error_mean+std::max(error_max, error_min);
+    // std::cout << "ce: " << error_max << " " << error_min << std::endl;
+    std::cout << "error: " << error_mean << " " << error_min << " " << error_max << std::endl;
+    return ce;
 }
 
 std::vector<Target_pcf_type> compute_pcf(std::vector<Disk> const & disks_a, std::vector<Disk> const & disks_b, std::vector<float> const & area, std::vector<float> const & radii, float rmax, ASMCDD_params const & params){

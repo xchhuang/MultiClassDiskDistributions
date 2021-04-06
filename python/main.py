@@ -14,6 +14,9 @@ from trainer import Trainer
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
+# command
+# python main.py --config_filename=configs/zerg_rush.txt
+
 # np.random.seed(0)
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.txt', help='config file name')

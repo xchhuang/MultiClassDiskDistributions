@@ -2,6 +2,13 @@ import numpy as np
 import torch
 
 
+class Contribution:
+    def __init__(self, device, nbbins):
+        self.weights = torch.zeros(nbbins).double().to(device)
+        self.contribution = torch.zeros(nbbins).double().to(device)
+        self.pcf = torch.zeros(nbbins).double().to(device)
+
+
 def diskDistance(a, b, rmax):
     n_dim = a.size(-1)
     # print(a.shape)

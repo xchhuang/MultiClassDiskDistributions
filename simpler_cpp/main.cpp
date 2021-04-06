@@ -142,7 +142,7 @@ int main(int argc, char *argv[]){
     std::cout << "Total number of class: " << vs.size() << std::endl;
     algo.initialize(algo_params.domainLength, algo_params.error_delta);
     
-    return 0;
+    // return 0;
     
     // write output to file
     std::ofstream out_init_pts("../outputs/"+example_filename+"_init.txt");
