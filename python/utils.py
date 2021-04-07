@@ -69,11 +69,11 @@ def plot_disks(categories, outputs, filename):
         # plt.subplot(121)
         for i in range(out.shape[0]):
             # plt.scatter(out[:, 0], out[:, 1], s=5)
-            circle = plt.Circle((out[i, 0], out[i, 1]), out[i, 2], c=k, fill=False)
+            circle = plt.Circle((out[i, 0], out[i, 1]), out[i, 2], color=str(k/len(outputs)), fill=False)
             ax.add_artist(circle)
         plt.axis('equal')
         plt.xlim([-0.2, 1.2])
         plt.ylim([-0.2, 1.2])
-        plt.title('Synthesized')
+        # plt.title('Synthesized')
     plt.savefig(filename)
     plt.clf()
