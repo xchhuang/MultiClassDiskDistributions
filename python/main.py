@@ -12,8 +12,8 @@ from collections import defaultdict
 from asmcdd import ASMCDD
 from trainer import Trainer
 
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
+# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+device = torch.device('cpu')    # seems cpu is faster
 # command
 # python main.py --config_filename=configs/zerg_rush.txt
 

@@ -132,7 +132,7 @@ Contribution compute_contribution(Disk const & pi, std::vector<Disk> const & oth
 float compute_error(Contribution const & contribution, std::vector<float> const & currentPCF, std::vector<Target_pcf_type> const & target)
 {
     // new_mean
-    float error_mean = -1e10;
+    float error_mean = -1e10;   // newly changed to negative infinity
     // std::cout << error_mean << std::endl;
     float error_min = -1e10;
     float error_max = -1e10;
@@ -165,7 +165,7 @@ float compute_error(Contribution const & contribution, std::vector<float> const 
     
     float ce = error_mean+std::max(error_max, error_min);
     // std::cout << "ce: " << error_max << " " << error_min << std::endl;
-    std::cout << "error: " << error_mean << " " << error_min << " " << error_max << std::endl;
+    // std::cout << "error: " << error_mean << " " << error_min << " " << error_max << std::endl;
     return ce;
 }
 

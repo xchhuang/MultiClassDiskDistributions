@@ -188,7 +188,7 @@ void Category::initialize(float domainLength, float e_delta){
             if(!disks.empty() || relation != id)
             {
                 //Computing the contribution of this disk to the pcf for this relation
-                std::cout << "n_accepted: " << n_accepted << std::endl;
+                std::cout << "===> Before Grid Search, n_accepted: " << n_accepted+1 << "/" << output_disks_radii.size() << std::endl;
                 test_pcf = compute_contribution(d_test, others[relation].disks, weights[relation], target_radii[relation], target_areas[relation], target_rmax[relation], parameters, relation == id ? n_accepted : MAX_LONG,relation == id ? 2*output_disks_radii.size()*output_disks_radii.size() : 2*output_disks_radii.size()*others[relation].disks.size(), diskfact);
                 
                 // std::cout << "disks: " << disks.size() << std::endl;     // both increasing
@@ -238,13 +238,14 @@ void Category::initialize(float domainLength, float e_delta){
         if(fails > max_fails)
         {
             //We have exceeded the 1000 fails threshold, we switch to a parallel grid search
-            std::cout << "Grid searching : " << n_accepted << "/" << output_disks_radii.size() <<std::endl;
+            
             //Grid search
             constexpr unsigned long N_I = 100;
             constexpr unsigned long N_J = 100;
             std::map<unsigned long, Contribution> contribs[N_I][N_J];
             while(n_accepted < output_disks_radii.size())
             {
+                std::cout << "===> Doing Grid Search: " << n_accepted+1 << "/" << output_disks_radii.size() <<std::endl;
                 float errors[N_I+1][N_J+1];
                 Compare minError = {INFINITY,0, 0};
 #pragma omp parallel for default(none) collapse(2) shared(output_disks_radii, n_accepted, relations, others, parameters, nSteps, errors, diskfact, contribs, weights, current_pcf, domainLength)
@@ -261,7 +262,6 @@ void Category::initialize(float domainLength, float e_delta){
                             currentError = std::max(currentError, compute_error(test_pcf, current_pcf[relation], target_pcf[relation]));
                             contribs[i][j].insert_or_assign(relation, test_pcf);
                         }
-
                         errors[i][j] = currentError;
                     }
                 }
@@ -300,7 +300,7 @@ void Category::initialize(float domainLength, float e_delta){
                     }
                 }
                 n_accepted++;
-                std::cout << "n_accepted: " << n_accepted << std::endl;
+                // std::cout << "n_accepted: " << n_accepted << std::endl;
             }
 
         }

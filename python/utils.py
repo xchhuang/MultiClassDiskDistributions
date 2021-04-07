@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 
 class Contribution:
@@ -55,3 +56,24 @@ def diskDistance(a, b, rmax):
         # print('else:', d_norm[idx4])
 
     return d_norm
+
+
+def plot_disks(categories, outputs, filename):
+    fig, ax = plt.subplots()
+    for k in range(len(outputs)):
+        # print(k)
+        out = outputs[k]
+        # print(out.shape)
+        # out = torch.stack(out, 0).detach().cpu().numpy()
+        out = out.detach().cpu().numpy()
+        # plt.subplot(121)
+        for i in range(out.shape[0]):
+            # plt.scatter(out[:, 0], out[:, 1], s=5)
+            circle = plt.Circle((out[i, 0], out[i, 1]), out[i, 2], c=k, fill=False)
+            ax.add_artist(circle)
+        plt.axis('equal')
+        plt.xlim([-0.2, 1.2])
+        plt.ylim([-0.2, 1.2])
+        plt.title('Synthesized')
+    plt.savefig(filename)
+    plt.clf()
