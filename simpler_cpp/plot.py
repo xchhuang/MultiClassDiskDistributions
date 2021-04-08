@@ -87,14 +87,14 @@ def plot_txt(scene_name):
     plt.title('Synthesized')
     plt.scatter(init_pts[:, 0], init_pts[:, 1], c=init_cla, s=5)
     plt.axis('equal')
-    plt.xlim([0, 1])
-    plt.ylim([0, 1])
+    plt.xlim([-0.2, 1.2])
+    plt.ylim([-0.2, 1.2])
     plt.subplot(122)
     plt.title('Input Exemplar')
     plt.scatter(tar_pts[:, 0], tar_pts[:, 1], c=tar_cla, s=5)
     plt.axis('equal')
-    plt.xlim([0, 1])
-    plt.ylim([0, 1])
+    plt.xlim([-0.2, 1.2])
+    plt.ylim([-0.2, 1.2])
     plt.savefig('outputs/'+scene_name)
     plt.clf()
 
@@ -112,11 +112,11 @@ def plot_txt(scene_name):
 
 def main():
     # read_all_txt()
-#    plot_txt('praise_the_sun')
-    plot_txt('zerg_rush')
+    # plot_txt('praise_the_sun')
+    # plot_txt('zerg_rush')
     plot_txt('forest')
 #    plot_txt('constrained')
-#    plot_txt('constrained_overlap')
+    # plot_txt('constrained_overlap')
 
 
 if __name__ == '__main__':
