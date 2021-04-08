@@ -45,14 +45,15 @@ def filter_nan(x):
     :return: torch.Tensor without nan(changed to -inf)
     :comment: use -inf so nan will not influence the mamximum value
     '''
-    y = torch.where(torch.isnan(x), torch.full_like(x, -np.inf), x)
+    # y = torch.where(torch.isnan(x), torch.full_like(x, -np.inf), x)
+    y = x[~torch.isnan(x)]
     return y
 
 
 def compute_error(contribution, current_pcf, target_pcf):
-    error_mean = -np.inf
-    error_min = -np.inf
-    error_max = -np.inf
+    error_mean = -1e7
+    error_min = -1e7
+    error_max = -1e7
     target_mean = target_pcf[:, 1]
     target_min = target_pcf[:, 2]
     target_max = target_pcf[:, 3]

@@ -13,7 +13,8 @@ from collections import defaultdict
 from utils import Contribution
 from computeFunctions import compute_contribution, compute_error
 import utils
-
+import copy
+from graphlib import TopologicalSorter
 
 # np.random.seed(0)
 
@@ -33,15 +34,20 @@ def get_weights(disks, cur_pcf_model, diskfact):
     return weights
 
 
-def iterative_dfs(graph, start, path=[]):
+def iterative_dfs(graph, start, path=set()):
     q = [start]
+    ans = []
     while q:
-        v = q.pop(0)
-        if v not in path:
-            path = path + [v]
-            q = graph[v] + q
+        v = q[-1]                   #item 1,just access, don't pop
+        path = path.union({v})
+        children = [x for x in graph[v] if x not in path]
+        if not children:              #no child or all of them already visited
+            ans = [v]+ans
+            q.pop()
+        else:
+            q.append(children[0])   #item 2, push just one child
 
-    return path
+    return ans
 
 
 class ASMCDD(torch.nn.Module):
@@ -55,15 +61,15 @@ class ASMCDD(torch.nn.Module):
         self.target = torch.nn.ParameterList()
         for k in categories.keys():
             self.target.append(torch.nn.Parameter(torch.from_numpy(np.array(categories[k])).double()))
-        self.pcf_model = []
+        self.pcf_model = defaultdict(dict)
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
         start_time = time()
         self.initialize()
         end_time = time()
         print('===> Initialization time: {:.4f}'.format(end_time - start_time))
-        utils.plot_disks(categories, self.outputs, self.opt.output_folder + '/output')
-        utils.plot_disks(categories, self.target, self.opt.output_folder + '/target')
+        utils.plot_disks(self.topological_order, categories, self.outputs, self.opt.output_folder + '/output')
+        utils.plot_disks(self.topological_order, categories, self.target, self.opt.output_folder + '/target')
 
     def computeTarget(self):
         n_classes = len(self.target)
@@ -88,11 +94,12 @@ class ASMCDD(torch.nn.Module):
                 # print(category_j, category_i)
                 cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=0.25, npoints=len(target_disks),
                                     n_rmax=5).to(self.device)
+                print('Target Info, id: {:}, parent: {:}, rmax: {:.4f}'.format(category_i, category_j, cur_pcf_model.rmax))
                 cur_pcf_mean, cur_pcf_min, cur_pcf_max = cur_pcf_model(target_disks, parent_disks,
                                                                        same_category=same_category, dimen=3,
                                                                        use_fnorm=True)
                 # print(cur_pcf_max)
-                self.pcf_model.append(cur_pcf_model)
+                self.pcf_model[category_i][category_j] = cur_pcf_model
                 self.target_pcfs[category_i][category_j] = torch.cat([cur_pcf_mean, cur_pcf_min.unsqueeze(1),
                                                                       cur_pcf_max.unsqueeze(1)], 1)
 
@@ -116,28 +123,35 @@ class ASMCDD(torch.nn.Module):
 
     def topologicalSort(self):
         graph = defaultdict(list)
-        for k in self.relations:
-            for v in self.relations[k]:
-                if v != k:
-                    graph[v].append(k)
-        root_id = 0
-        all_children = set()
-        for i in graph:
-            for j in graph[i]:
-                all_children.add(j)
-        all_children = list(all_children)
-        for k in self.relations:  # find a root node id
-            if k not in all_children:
-                root_id = k
-                break
-        return graph, root_id
+        for k in range(len(self.target)):
+            if len(self.relations[k]) == 1:
+                graph[k] = []
+            else:
+                for v in self.relations[k]:
+                    if v != k:
+                        graph[k].append(v)
+        # root_id = 0
+        # all_children = set()
+        # for i in range(len(self.target)):
+        #     for j in graph[i]:
+        #         all_children.add(j)
+        # all_children = list(all_children)
+        # for k in self.relations:  # find a root node id
+        #     if k not in all_children:
+        #         root_id = k
+        #         break
+
+        return graph  #, root_id
 
     def initialize(self, domainLength=1, e_delta=1e-4):
         # first find the topological oder
-        graph, root_id = self.topologicalSort()
-        # print(graph, root_id)
-        topological_order = iterative_dfs(graph, root_id)
-        # print('topological_order:', topological_order)
+        graph = self.topologicalSort()
+        # print(graph)
+        # graph = {"D": ["B", "C"], "C": ["A"], "B": ["A"]}
+        ts = TopologicalSorter(graph)
+        topological_order = list(ts.static_order())
+        self.topological_order = topological_order
+        print('topological_order:', topological_order)
 
         n_factor = domainLength * domainLength
         diskfact = 1 / domainLength
@@ -147,8 +161,15 @@ class ASMCDD(torch.nn.Module):
         others = defaultdict(list)  # existing generated disks
         for i in topological_order:
             others[i] = []
+        print(topological_order)
+
+
+
+        # predefined id 0 for debugging
 
         for i in topological_order:
+            if i > 1:
+                break
             # TODO: those params should be defined inside the loop
             e_0 = 0
             max_fails = 1000
@@ -163,23 +184,21 @@ class ASMCDD(torch.nn.Module):
             # print(target_disks.shape)
             output_disks_radii = torch.zeros(target_disks.shape[0] * n_repeat).double().to(self.device)
             output_disks_radii = target_disks[:, -1].repeat(n_repeat)
-            idx = torch.randperm(output_disks_radii.shape[0])
-            output_disks_radii = output_disks_radii[idx].view(output_disks_radii.size())
+            # idx = torch.randperm(output_disks_radii.shape[0])
+            # output_disks_radii = output_disks_radii[idx].view(output_disks_radii.size())
             output_disks_radii, _ = torch.sort(output_disks_radii, descending=True)
             # print(i, output_disks_radii.shape)
 
             # init
             # print(i, self.relations[i])
             current_pcf = defaultdict(list)
-            for relation in self.relations[i]:
-                current_pcf[relation] = torch.zeros(self.nSteps).double().to(self.device)
-            # current_pcf = torch.zeros(len(self.relations[i]), self.nSteps).double().to(self.device)
             contributions = defaultdict(Contribution)
             weights = defaultdict(list)
             cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=0.25, npoints=len(target_disks), n_rmax=5).to(
                 self.device)
 
             for relation in self.relations[i]:
+                current_pcf[relation] = torch.zeros(self.nSteps).double().to(self.device)
                 # print(current_pcf.shape)
                 others_disks = others[relation]
                 # print(i, relation, others_disks)
@@ -190,6 +209,7 @@ class ASMCDD(torch.nn.Module):
                 # print(len(others_disks))
                 current_weight = get_weights(others_disks, cur_pcf_model, diskfact)  # TODO: check, might be empty
                 weights[relation] = current_weight
+                contributions[relation] = Contribution(self.device, self.nSteps)
 
             while n_accepted < output_disks_radii.shape[0]:
                 # print(
@@ -205,6 +225,7 @@ class ASMCDD(torch.nn.Module):
                 rx = np.random.rand() * domainLength
                 ry = np.random.rand() * domainLength
                 d_test = [rx, ry, output_disks_radii[n_accepted]]
+
                 d_test = torch.from_numpy(np.array(d_test)).double().to(self.device)  # d_test: torch.Tensor: (3,)
 
                 for relation in self.relations[i]:
@@ -219,36 +240,45 @@ class ASMCDD(torch.nn.Module):
                             target_size = 2 * output_disks_radii.shape[0] * len(others[relation])
                         # print(target_size)
                         # print(others[relation])
+
                         others_rel_torch = torch.stack(others[relation], 0)  # torch.Tensor: [N, 3]
                         weights_rel_torch = torch.stack(weights[relation], 0)
                         # print(others_rel_torch.shape, weights_rel_torch.shape)
+                        # print(target_size)
 
                         test_pcf = compute_contribution(self.device, self.nSteps, d_test, others_rel_torch,
                                                         weights_rel_torch, cur_pcf_model, same_category,
                                                         target_size, diskfact)
-
+                        # if i == 1 and relation == 0:
+                        #     print(test_pcf.pcf)
                         ce = compute_error(test_pcf, current_pcf[relation], self.target_pcfs[i][relation])
-                        # print(n_accepted, ce, e)
 
                         if e < ce:
-                            # print(n_accepted, ce, e)
                             rejected = True
                             break
+                        else:
+                            pass
+                            # print(n_accepted, ce, e)
 
                     else:
                         # print('here2')
                         test_pcf.weights = get_weight(d_test, cur_pcf_model, diskfact)
-                    contributions[relation] = test_pcf
+
+
+                    contributions[relation].pcf = test_pcf.pcf.clone()
+                    contributions[relation].weights = test_pcf.weights.clone()
+                    contributions[relation].contribution = test_pcf.contribution.clone()
 
                 if rejected:
                     fails += 1
                 else:
-                    print(
-                        '===> Before Gird Search, n_accepted: {:}/{:}'.format(n_accepted + 1,
-                                                                              output_disks_radii.shape[0]))
+                    # print('===> Before Gird Search, n_accepted: {:}/{:}'.format(n_accepted + 1,
+                    #                                                             output_disks_radii.shape[0]))
 
                     others[i].append(d_test)
                     fails = 0
+                    if i == 0:
+                        print(d_test)
                     for relation in self.relations[i]:
                         current = current_pcf[relation]
                         contrib = contributions[relation]
@@ -260,23 +290,31 @@ class ASMCDD(torch.nn.Module):
                 if fails > max_fails:
                     # exceed fail threshold, switch to a parallel grid search
                     N_I = N_J = 100
+                    minError_contrib = defaultdict(Contribution)
+                    for relation in self.relations[i]:
+                        minError_contrib[relation] = Contribution(self.device, self.nSteps)
+
                     while n_accepted < output_disks_radii.shape[0]:
                         print('===> Doing Grid Search: {:}/{:}'.format(n_accepted + 1, output_disks_radii.shape[0]))
                         minError_val = np.inf
                         minError_i = 0
                         minError_j = 0
-                        minError_contrib = defaultdict(Contribution)
-                        for relation in self.relations[i]:
-                            minError_contrib[relation] = Contribution(self.device, self.nSteps)
+                        # minError_contrib = defaultdict(Contribution)
+                        # for relation in self.relations[i]:
+                        #     minError_contrib[relation] = Contribution(self.device, self.nSteps)
                         currentError = 0
                         for ni in range(1, N_I):
                             for nj in range(1, N_J):
                                 currentError = 0
+                                current_contrib = defaultdict(Contribution)
+                                for relation in self.relations[i]:
+                                    current_contrib[relation] = Contribution(self.device, self.nSteps)
+
                                 cell_test = [domainLength / N_I * ni, domainLength / N_J * nj,
                                              output_disks_radii[n_accepted]]
                                 cell_test = torch.from_numpy(np.array(cell_test)).double().to(self.device)
                                 for relation in self.relations[i]:
-                                    test_pcf = Contribution(self.device, self.nSteps)
+                                    # test_pcf = Contribution(self.device, self.nSteps)
                                     same_category = False
                                     if relation == i:
                                         same_category = True
@@ -288,17 +326,24 @@ class ASMCDD(torch.nn.Module):
                                     others_rel_torch = torch.stack(others[relation], 0)  # torch.Tensor: [N, 3]
                                     weights_rel_torch = torch.stack(weights[relation], 0)
                                     # print(cell_test.shape, others_rel_torch.shape, weights_rel_torch.shape, same_category)
-                                    test_pcf = compute_contribution(self.device, self.nSteps, cell_test, others_rel_torch,
+                                    test_pcf = compute_contribution(self.device, self.nSteps, cell_test,
+                                                                    others_rel_torch,
                                                                     weights_rel_torch, cur_pcf_model, same_category,
                                                                     target_size, diskfact)
                                     ce = compute_error(test_pcf, current_pcf[relation],
-                                                                 self.target_pcfs[i][relation])
+                                                       self.target_pcfs[i][relation])
                                     currentError = max(ce, currentError)
+                                    current_contrib[relation] = test_pcf
+
+                                # print(currentError)
                                 if currentError < minError_val:
                                     minError_val = currentError
                                     minError_i = ni
                                     minError_j = nj
-                                    minError_contrib[relation] = test_pcf
+                                    for relation in self.relations[i]:
+                                        minError_contrib[relation].pcf = current_contrib[relation].pcf.clone()
+                                        minError_contrib[relation].weights = current_contrib[relation].weights.clone()
+                                        minError_contrib[relation].contribution = current_contrib[relation].contribution.clone()
 
                         # finally outside grid search, then add random x, y offsets within a grid
                         x_offset = (np.random.rand() * domainLength - domainLength / 2) / (N_I * 10)
@@ -317,7 +362,12 @@ class ASMCDD(torch.nn.Module):
                             current_pcf[relation] += contrib.contribution
                         n_accepted += 1
 
-        self.outputs = [torch.stack(others[k], 0) for k in others]
+        self.outputs = []
+        print(len(self.pcf_model))
+        for k in topological_order:
+            if k > 1:
+                break
+            self.outputs.append(torch.stack(others[k], 0))
 
     def forward(self):
         for i in range(3):

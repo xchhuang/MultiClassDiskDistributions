@@ -58,9 +58,20 @@ def diskDistance(a, b, rmax):
     return d_norm
 
 
-def plot_disks(categories, outputs, filename):
+
+colors_dict = {
+    0: 'r',
+    1: 'g',
+    2: 'b',
+    3: 'k',
+
+}
+
+def plot_disks(topological_order, categories, outputs, filename):
     fig, ax = plt.subplots()
-    for k in range(len(outputs)):
+    for k in topological_order:
+        if k > 1:
+            break
         # print(k)
         out = outputs[k]
         # print(out.shape)
@@ -69,7 +80,7 @@ def plot_disks(categories, outputs, filename):
         # plt.subplot(121)
         for i in range(out.shape[0]):
             # plt.scatter(out[:, 0], out[:, 1], s=5)
-            circle = plt.Circle((out[i, 0], out[i, 1]), out[i, 2], color=str(k/len(outputs)), fill=False)
+            circle = plt.Circle((out[i, 0], out[i, 1]), out[i, 2], color=colors_dict[k], fill=False)
             ax.add_artist(circle)
         plt.axis('equal')
         plt.xlim([-0.2, 1.2])
