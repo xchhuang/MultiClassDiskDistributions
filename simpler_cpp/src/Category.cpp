@@ -181,6 +181,7 @@ void Category::initialize(float domainLength, float e_delta){
         // rx = 0.5;
         // ry = 0.5;
         Disk d_test(rx, ry, output_disks_radii[n_accepted]);
+        
         // std::cout << "n_accepted: " << n_accepted << std::endl;
         for(auto relation : relations)
         {
@@ -194,12 +195,21 @@ void Category::initialize(float domainLength, float e_delta){
                 // std::cout << "disks: " << disks.size() << std::endl;     // both increasing
                 // std::cout << "others: " << others[relation].disks.size() << std::endl;
                 float ce = compute_error(test_pcf, current_pcf[relation], target_pcf[relation]);
-                // return;
+                // if (id == 1 && relation == 0) {
+                //     std::cout << "n_accepted: " << n_accepted << std::endl;
+                //     for (int kk=0; kk<test_pcf.pcf.size(); kk++) {
+                //         std::cout << test_pcf.pcf[kk] << " ";
+                //     }
+                //     std::cout << std::endl;
+                // }
+
                 if(e < ce) {
                     
                     //Disk is rejected if the error is too high
                     rejected=true;
                     break;
+                } else {
+
                 }
             }else{
 
@@ -216,10 +226,13 @@ void Category::initialize(float domainLength, float e_delta){
         {
             //The disk is accepted, we add it to the list
 //            disks_access.lock();
-            std::cout << "===> Before Grid Search, n_accepted: " << n_accepted+1 << "/" << output_disks_radii.size() << std::endl;
+            // std::cout << "===> Before Grid Search, n_accepted: " << n_accepted+1 << "/" << output_disks_radii.size() << std::endl;
             disks.push_back(d_test);
 //            disks_access.unlock();
             fails=0;
+            if (id == 0) {
+                std::cout << rx << " " << ry << " " << output_disks_radii[n_accepted] << std::endl;
+            }
             for(auto relation : relations)
             {
                 auto & current = current_pcf[relation];
@@ -229,7 +242,9 @@ void Category::initialize(float domainLength, float e_delta){
                     weights[relation].emplace_back(contrib.weights);
                 }
                 for(unsigned long k=0; k<nSteps; k++)
-                {
+                {   
+                    // if (id == 1)
+                    //     std::cout << "contrib.contribution[k]: " << n_accepted << " " << contrib.contribution[k] << std::endl;
                     current[k]+=contrib.contribution[k];
                 }
             }
@@ -246,7 +261,7 @@ void Category::initialize(float domainLength, float e_delta){
             std::map<unsigned long, Contribution> contribs[N_I][N_J];
             while(n_accepted < output_disks_radii.size())
             {
-                std::cout << "===> Doing Grid Search: " << n_accepted+1 << "/" << output_disks_radii.size() <<std::endl;
+                // std::cout << "===> Doing Grid Search: " << n_accepted+1 << "/" << output_disks_radii.size() <<std::endl;
                 float errors[N_I+1][N_J+1];
                 Compare minError = {INFINITY,0, 0};
 #pragma omp parallel for default(none) collapse(2) shared(output_disks_radii, n_accepted, relations, others, parameters, nSteps, errors, diskfact, contribs, weights, current_pcf, domainLength)
