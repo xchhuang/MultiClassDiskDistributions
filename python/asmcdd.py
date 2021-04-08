@@ -58,7 +58,10 @@ class ASMCDD(torch.nn.Module):
         self.pcf_model = []
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
+        start_time = time()
         self.initialize()
+        end_time = time()
+        print('===> Initialization time: {:.4f}'.format(end_time - start_time))
         utils.plot_disks(categories, self.outputs, self.opt.output_folder + '/output')
         utils.plot_disks(categories, self.target, self.opt.output_folder + '/target')
 
@@ -166,7 +169,7 @@ class ASMCDD(torch.nn.Module):
             # print(i, output_disks_radii.shape)
 
             # init
-            print(i, self.relations[i])
+            # print(i, self.relations[i])
             current_pcf = defaultdict(list)
             for relation in self.relations[i]:
                 current_pcf[relation] = torch.zeros(self.nSteps).double().to(self.device)
@@ -189,13 +192,16 @@ class ASMCDD(torch.nn.Module):
                 weights[relation] = current_weight
 
             while n_accepted < output_disks_radii.shape[0]:
-                print(
-                    '===> Before Gird Search, n_accepted: {:}/{:}'.format(n_accepted + 1, output_disks_radii.shape[0]))
+                # print(
+                #     '===> Before Gird Search, n_accepted: {:}/{:}'.format(n_accepted + 1, output_disks_radii.shape[0]))
+                #
                 rejected = False
                 e = e_0 + e_delta * fails
-
+                # if i == 0:
                 # rx = min_x + np.random.rand() * (max_x - min_x)  # my version
                 # ry = min_y + np.random.rand() * (max_y - min_y)
+                # print(rx, ry)
+                # else:
                 rx = np.random.rand() * domainLength
                 ry = np.random.rand() * domainLength
                 d_test = [rx, ry, output_disks_radii[n_accepted]]
@@ -237,6 +243,10 @@ class ASMCDD(torch.nn.Module):
                 if rejected:
                     fails += 1
                 else:
+                    print(
+                        '===> Before Gird Search, n_accepted: {:}/{:}'.format(n_accepted + 1,
+                                                                              output_disks_radii.shape[0]))
+
                     others[i].append(d_test)
                     fails = 0
                     for relation in self.relations[i]:
@@ -258,7 +268,7 @@ class ASMCDD(torch.nn.Module):
                         minError_contrib = defaultdict(Contribution)
                         for relation in self.relations[i]:
                             minError_contrib[relation] = Contribution(self.device, self.nSteps)
-
+                        currentError = 0
                         for ni in range(1, N_I):
                             for nj in range(1, N_J):
                                 currentError = 0
@@ -281,14 +291,14 @@ class ASMCDD(torch.nn.Module):
                                     test_pcf = compute_contribution(self.device, self.nSteps, cell_test, others_rel_torch,
                                                                     weights_rel_torch, cur_pcf_model, same_category,
                                                                     target_size, diskfact)
-                                    currentError = compute_error(test_pcf, current_pcf[relation],
+                                    ce = compute_error(test_pcf, current_pcf[relation],
                                                                  self.target_pcfs[i][relation])
-                                    currentError = max(currentError, currentError)
-                                    if currentError < minError_val:
-                                        minError_val = currentError
-                                        minError_i = ni
-                                        minError_j = nj
-                                        minError_contrib[relation] = test_pcf
+                                    currentError = max(ce, currentError)
+                                if currentError < minError_val:
+                                    minError_val = currentError
+                                    minError_i = ni
+                                    minError_j = nj
+                                    minError_contrib[relation] = test_pcf
 
                         # finally outside grid search, then add random x, y offsets within a grid
                         x_offset = (np.random.rand() * domainLength - domainLength / 2) / (N_I * 10)
