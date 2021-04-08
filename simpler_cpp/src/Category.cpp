@@ -188,7 +188,7 @@ void Category::initialize(float domainLength, float e_delta){
             if(!disks.empty() || relation != id)
             {
                 //Computing the contribution of this disk to the pcf for this relation
-                std::cout << "===> Before Grid Search, n_accepted: " << n_accepted+1 << "/" << output_disks_radii.size() << std::endl;
+                
                 test_pcf = compute_contribution(d_test, others[relation].disks, weights[relation], target_radii[relation], target_areas[relation], target_rmax[relation], parameters, relation == id ? n_accepted : MAX_LONG,relation == id ? 2*output_disks_radii.size()*output_disks_radii.size() : 2*output_disks_radii.size()*others[relation].disks.size(), diskfact);
                 
                 // std::cout << "disks: " << disks.size() << std::endl;     // both increasing
@@ -216,6 +216,7 @@ void Category::initialize(float domainLength, float e_delta){
         {
             //The disk is accepted, we add it to the list
 //            disks_access.lock();
+            std::cout << "===> Before Grid Search, n_accepted: " << n_accepted+1 << "/" << output_disks_radii.size() << std::endl;
             disks.push_back(d_test);
 //            disks_access.unlock();
             fails=0;
@@ -259,17 +260,14 @@ void Category::initialize(float domainLength, float e_delta){
                         {
                             Contribution test_pcf;
                             test_pcf = compute_contribution(cell_test, others[relation].disks, weights[relation], target_radii[relation], target_areas[relation], target_rmax[relation], parameters, relation == id ? n_accepted : MAX_LONG, relation == id ? output_disks_radii.size()*output_disks_radii.size() : output_disks_radii.size()*others[relation].disks.size(), diskfact);
-                            currentError = std::max(currentError, compute_error(test_pcf, current_pcf[relation], target_pcf[relation]));
+                            float ce = compute_error(test_pcf, current_pcf[relation], target_pcf[relation]);
+                            currentError = std::max(currentError, ce);
+                            // std::cout << "ce: " << ce << std::endl;
                             contribs[i][j].insert_or_assign(relation, test_pcf);
                         }
+                        
                         errors[i][j] = currentError;
-                    }
-                }
-
-                for(unsigned long i=1; i<N_I; i++)
-                {
-                    for(unsigned long j=1; j<N_J; j++)
-                    {
+                        // newly modified
                         if(errors[i][j] < minError.val)
                         {
                             minError.val = errors[i][j];
@@ -278,6 +276,20 @@ void Category::initialize(float domainLength, float e_delta){
                         }
                     }
                 }
+
+                // for(unsigned long i=1; i<N_I; i++)
+                // {
+                //     for(unsigned long j=1; j<N_J; j++)
+                //     {
+                //         if(errors[i][j] < minError.val)
+                //         {
+                //             minError.val = errors[i][j];
+                //             minError.i = i;
+                //             minError.j = j;
+                //         }
+                //     }
+                // }
+
 
                 //We automatically accept the disk with the lowest error
 //                disks_access.lock();
