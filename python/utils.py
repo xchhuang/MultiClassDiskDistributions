@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 
 class Contribution:
     def __init__(self, device, nbbins):
-        self.weights = torch.zeros(nbbins).double().to(device)
-        self.contribution = torch.zeros(nbbins).double().to(device)
-        self.pcf = torch.zeros(nbbins).double().to(device)
+        self.weights = torch.zeros(nbbins).float().to(device)
+        self.contribution = torch.zeros(nbbins).float().to(device)
+        self.pcf = torch.zeros(nbbins).float().to(device)
 
 
 def diskDistance(a, b, rmax):

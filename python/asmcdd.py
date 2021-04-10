@@ -61,7 +61,7 @@ class ASMCDD(torch.nn.Module):
         self.nSteps = 50
         self.target = torch.nn.ParameterList()
         for k in categories.keys():
-            self.target.append(torch.nn.Parameter(torch.from_numpy(np.array(categories[k])).double()))
+            self.target.append(torch.nn.Parameter(torch.from_numpy(np.array(categories[k])).float()))
         self.pcf_model = defaultdict(dict)
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
@@ -86,9 +86,11 @@ class ASMCDD(torch.nn.Module):
                 category_j = self.relations[i][j]
                 parent_disks = self.categories[category_j]
                 # print(len(target_disk), len(parent_disk))
-
-                target_disks = torch.from_numpy(np.array(target_disks)).double().to(self.device)
-                parent_disks = torch.from_numpy(np.array(parent_disks)).double().to(self.device)
+                target_disks = np.array(target_disks).astype(np.float32)
+                parent_disks = np.array(parent_disks).astype(np.float32)
+                target_disks = torch.from_numpy(target_disks).float().to(self.device)
+                parent_disks = torch.from_numpy(parent_disks).float().to(self.device)
+                # print(target_disks, parent_disks)
                 same_category = False
                 # print(category_i, category_j, 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * len(target_disks))))
                 if category_i == category_j:
@@ -170,20 +172,20 @@ class ASMCDD(torch.nn.Module):
         print(topological_order)
 
         # TODO: predefined id 0 for debugging
-        predefined_id_pts = defaultdict(list)
-        for i in range(2):
-            pts = []
-            with open('../simpler_cpp/outputs/debug_forest_{:}.txt'.format(i)) as f:
-                lines = f.readlines()
-                for line in lines:
-                    line = line.strip().split(' ')
-                    l = [float(x) for x in line]
-                    pts.append(l)
-            predefined_id_pts[i] = pts
+        # predefined_id_pts = defaultdict(list)
+        # for i in range(2):
+        #     pts = []
+        #     with open('../simpler_cpp/outputs/debug_forest_{:}.txt'.format(i)) as f:
+        #         lines = f.readlines()
+        #         for line in lines:
+        #             line = line.strip().split(' ')
+        #             l = [float(x) for x in line]
+        #             pts.append(l)
+        #     predefined_id_pts[i] = pts
 
         for i in topological_order:
-            if i > 1:
-                break
+            # if i > 1:
+            #     break
             # TODO: those params should be defined inside the loop
             e_0 = 0
             max_fails = 1000
@@ -191,12 +193,12 @@ class ASMCDD(torch.nn.Module):
             n_accepted = 0
 
             target_disks = self.categories[i]
-            target_disks = torch.from_numpy(np.array(target_disks)).double().to(self.device)
+            target_disks = torch.from_numpy(np.array(target_disks)).float().to(self.device)
             min_x, max_x = target_disks[:, 0].min().item(), target_disks[:, 0].max().item()
             min_y, max_y = target_disks[:, 1].min().item(), target_disks[:, 1].max().item()
             # print(min_x, max_x, min_y, max_y)
             # print(target_disks.shape)
-            output_disks_radii = torch.zeros(target_disks.shape[0] * n_repeat).double().to(self.device)
+            output_disks_radii = torch.zeros(target_disks.shape[0] * n_repeat).float().to(self.device)
             output_disks_radii = target_disks[:, -1].repeat(n_repeat)
             # idx = torch.randperm(output_disks_radii.shape[0])
             # output_disks_radii = output_disks_radii[idx].view(output_disks_radii.size())
@@ -212,14 +214,14 @@ class ASMCDD(torch.nn.Module):
                 self.device)
 
             for relation in self.relations[i]:
-                current_pcf[relation] = torch.zeros(self.nSteps).double().to(self.device)
+                current_pcf[relation] = torch.zeros(self.nSteps).float().to(self.device)
                 # print(current_pcf.shape)
                 others_disks = others[relation]
                 # print(i, relation, others_disks)
                 if len(others_disks) != 0:
                     others_disks = torch.stack(others_disks, 0)
                 else:
-                    others_disks = torch.from_numpy(np.array(others_disks)).double().to(self.device)
+                    others_disks = torch.from_numpy(np.array(others_disks)).float().to(self.device)
                 # print(len(others_disks))
                 current_weight = get_weights(others_disks, cur_pcf_model, diskfact)  # TODO: check, might be empty
                 weights[relation] = current_weight
@@ -239,15 +241,15 @@ class ASMCDD(torch.nn.Module):
                 rx = np.random.rand() * domainLength
                 ry = np.random.rand() * domainLength
                 d_test = [rx, ry, output_disks_radii[n_accepted]]
-                d_test = torch.from_numpy(np.array(d_test)).double().to(self.device)  # d_test: torch.Tensor: (3,)
+                d_test = torch.from_numpy(np.array(d_test)).float().to(self.device)  # d_test: torch.Tensor: (3,)
 
                 for relation in self.relations[i]:
-                    if i == 0:
-                        d_test = torch.from_numpy(np.array(predefined_id_pts[i][n_accepted])).double().to(self.device)
-                        rejected = False
-                        break
-                    if i == 1:
-                        d_test = torch.from_numpy(np.array(predefined_id_pts[i][n_accepted])).double().to(self.device)
+                    # if i == 0:
+                    #     d_test = torch.from_numpy(np.array(predefined_id_pts[i][n_accepted])).float().to(self.device)
+                    #     rejected = False
+                    #     break
+                    # if i == 1:
+                    #     d_test = torch.from_numpy(np.array(predefined_id_pts[i][n_accepted])).float().to(self.device)
 
                     test_pcf = Contribution(self.device, self.nSteps)
                     if len(others[i]) != 0 or i != relation:
@@ -294,16 +296,16 @@ class ASMCDD(torch.nn.Module):
 
                     others[i].append(d_test)
                     fails = 0
-                    if i == 1:
-                        print('n_accepted:', n_accepted, d_test)
+                    # if i == 1:
+                    #     print('n_accepted:', n_accepted, d_test)
                     for relation in self.relations[i]:
                         current = current_pcf[relation]
                         contrib = contributions[relation]
                         if relation == i:
                             weights[relation].append(contrib.weights)
                         current_pcf[relation] += contrib.contribution.clone()
-                        if i == 1:
-                            print(current_pcf[relation])
+                        # if i == 1:
+                        #     print(current_pcf[relation])
                     n_accepted += 1
 
                 if fails > max_fails:
@@ -331,7 +333,7 @@ class ASMCDD(torch.nn.Module):
 
                                 cell_test = [domainLength / N_I * ni, domainLength / N_J * nj,
                                              output_disks_radii[n_accepted]]
-                                cell_test = torch.from_numpy(np.array(cell_test)).double().to(self.device)
+                                cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
                                 for relation in self.relations[i]:
                                     # test_pcf = Contribution(self.device, self.nSteps)
                                     same_category = False
@@ -371,7 +373,7 @@ class ASMCDD(torch.nn.Module):
                         cell_test = [domainLength / N_I * minError_i + x_offset,
                                      domainLength / N_J * minError_j + y_offset,
                                      output_disks_radii[n_accepted]]
-                        cell_test = torch.from_numpy(np.array(cell_test)).double().to(self.device)
+                        cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
                         others[i].append(cell_test)
 
                         for relation in self.relations[i]:
@@ -385,8 +387,8 @@ class ASMCDD(torch.nn.Module):
         self.outputs = []
         print(len(self.pcf_model))
         for k in topological_order:
-            if k > 1:
-                break
+            # if k > 1:
+            #     break
             self.outputs.append(torch.stack(others[k], 0))
 
     def forward(self):

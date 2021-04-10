@@ -47,19 +47,25 @@ def filter_nan(x):
     :return: torch.Tensor without nan(changed to -inf)
     :comment: use -inf so nan will not influence the mamximum value
     '''
-    # y = torch.where(torch.isnan(x), torch.full_like(x, -np.inf), x)
-    y = x[~torch.isnan(x)]
+    y = torch.where(torch.isnan(x), torch.full_like(x, -np.inf), x)
+    # y = x
+    # w_nan = torch.isnan(x)
+    # print(torch.where(w_nan)[0].size(0), x)
+    #
+    # if torch.where(w_nan)[0].size(0) > 0:
+    #     y = x[~torch.isnan(x)]
     return y
 
 
 def compute_error(contribution, current_pcf, target_pcf):
-    error_mean = -1e7
-    error_min = -1e7
-    error_max = -1e7
+    error_mean = -np.inf
+    error_min = -np.inf
+    error_max = -np.inf
     target_mean = target_pcf[:, 1]
     target_min = target_pcf[:, 2]
     target_max = target_pcf[:, 3]
     # print(target_pcf)
+
     x = (current_pcf + contribution.contribution - target_mean) / target_mean
     error_mean = max(filter_nan(x).max().item(), error_mean)
     # print(error_mean)
@@ -68,7 +74,8 @@ def compute_error(contribution, current_pcf, target_pcf):
 
     x = (target_min - contribution.pcf) / target_min
     error_min = max(filter_nan(x).max().item(), error_min)
-
+    # print('w/:', x)
+    # print('wo/', filter_nan(x))
     ce = error_mean + max(error_max, error_min)
     # print(error_mean, error_min, error_max)
     return ce
@@ -97,9 +104,11 @@ class PCF(torch.nn.Module):
         rb = rs[-1]
         # print('PCF Parameters:', self.rmin, self.rmax, npoints)
 
-        self.rs = torch.DoubleTensor(np.array(rs)).to(device)
-        self.area = torch.DoubleTensor(np.array(area)).to(device)
-        self.sigma = torch.DoubleTensor([sigma]).to(device)
+        self.rs = torch.from_numpy(np.array(rs)).float().to(device)
+        self.area = torch.from_numpy(np.array(area)).float().to(device)
+        # self.sigma = torch.from_numpy(np.array([sigma])).float().to(device)
+        # print('self.sigma:', self.sigma)
+        self.sigma = sigma
         self.gf = 1.0 / (np.sqrt(math.pi) * self.sigma)
 
     def gaussianKernel(self, x):
@@ -109,13 +118,13 @@ class PCF(torch.nn.Module):
 
     def perimeter_weight(self, x, y, diskfact=1):
 
-        full_angle = torch.ones(self.nbbins).double() * 2 * math.pi
+        full_angle = torch.ones(self.nbbins).float() * 2 * math.pi
         full_angle = full_angle.to(self.device)
         weights = torch.zeros_like(full_angle)
         rs = self.rs
-        x *= diskfact
-        y *= diskfact
-        rs *= diskfact
+        # x *= diskfact
+        # y *= diskfact
+        # rs *= diskfact
 
         dx = x
         dy = y
@@ -151,104 +160,104 @@ class PCF(torch.nn.Module):
         # weights = 1 / perimeter
         return weights
 
-    def compute_weights(self, gen_pts, relation):
-        # print (len(gen_pts))
-        gen_pts = torch.FloatTensor(np.array(gen_pts))
-        pts = gen_pts[gen_pts[:, 3] == relation]
-        other_weights = []
-        for i in range(pts.size(0)):
-            p = pts[i:i + 1]
-            weights = 1 / self.perimeter_weight(p[:, 0], p[:, 1])
-            # print(weights)
-            other_weights.append(weights)
-        other_weights = torch.stack(other_weights, dim=0)
-        # print (other_weights[0], other_weights.size())
-        return other_weights
-
-    def compute_contribution(self, disk, gen_pts, other_weights, target_pts, id, relation):
-
-        other_weights = other_weights[relation]
-        gen_pts = torch.FloatTensor(np.array(gen_pts))
-        other = gen_pts[gen_pts[:, 3] == relation]
-        cur = gen_pts[gen_pts[:, 3] == id]
-
-        denorm_1 = target_pts[target_pts[:, 3] == id].size(0)
-        denorm_2 = target_pts[target_pts[:, 3] == relation].size(0)
-        denom = denorm_1 * denorm_2
-
-        # print (gen_pts, other)
-        disk = torch.FloatTensor(np.array(disk)).unsqueeze(0)
-        # print (disk.size())
-        disk = disk.repeat(other.size(0), 1)
-
-        # pcf = torch.zeros(self.nbbins)
-        # weights = torch.zeros(self.nbbins)
-        # contribution = torch.zeros(self.nbbins)
-
-        # for i in range(other.size(0)):
-
-        dis = utils.fnorm(disk[:, 0:3], other[:, 0:3], self.rmax)
-        # print (self.rmax)
-        # print ('disk:',disk[:,0:3])
-        # print ('other:',other[:,0:3])
-        # print (dis)
-        # print (other_weights)
-
-        val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - dis.view(-1, 1).repeat(1, self.nbbins))
-
-        weights = 1 / self.perimeter_weight(disk[0, 0], disk[0, 1])
-
-        # print (val.size(), other_weights.size())
-
-        contribution = torch.sum(other_weights * val, 0)
-        # torch.set_printoptions(precision=8)
-        # print (contribution,denom)
-
-        hist = torch.sum(weights * val, 0)
-        pcf = hist / self.area
-
-        contribution = pcf + contribution / self.area
-
-        pcf = pcf / other.size(0)
-        # print (pcf)
-        contribution = contribution / denom
-        # print (contribution,denom)
-        return contribution, pcf
-
-    def compute_error(self, contribution, test_pcf, target_pcf, relation):
-        E = 0
-        eps = 1e-7
-        error_mean = 0
-        error_min = 0
-        error_max = 0
-
-        # pcf0 = target_pcf[0]
-        # pcf1 = target_pcf[1]
-        # target_pcf_mean = torch.mean(torch.cat((pcf0[:,1:2], pcf1[:,1:2]),dim=1),dim=1)
-        # target_pcf_max = torch.max(torch.cat((pcf0[:,1:2], pcf1[:,1:2]),dim=1),dim=1)[0]
-        # target_pcf_min = torch.min(torch.cat((pcf0[:,1:2], pcf1[:,1:2]),dim=1),dim=1)[0]
-        target_pcf_mean = target_pcf[relation][:, 1]
-        target_pcf_min = target_pcf[relation][:, 2]
-        target_pcf_max = target_pcf[relation][:, 3]
-
-        # print (torch.max((test_pcf - target_pcf_max)/(target_pcf_max+eps)))
-        error_mean = max(((contribution - target_pcf_mean) / (target_pcf_mean + eps)).max(), error_mean)
-        # print ('error_mean: ', error_mean)
-        error_max = max(((test_pcf - target_pcf_max) / (target_pcf_max + eps)).max(), error_max)
-        # print ('error_max: ', error_max)
-        error_min = max(((target_pcf_min - test_pcf) / (target_pcf_min + eps)).max(), error_min)
-        # print (error_min)
-        E = error_mean + max(error_max, error_min);
-        # print (E)
-        return E
+    # def compute_weights(self, gen_pts, relation):
+    #     # print (len(gen_pts))
+    #     gen_pts = torch.FloatTensor(np.array(gen_pts))
+    #     pts = gen_pts[gen_pts[:, 3] == relation]
+    #     other_weights = []
+    #     for i in range(pts.size(0)):
+    #         p = pts[i:i + 1]
+    #         weights = 1 / self.perimeter_weight(p[:, 0], p[:, 1])
+    #         # print(weights)
+    #         other_weights.append(weights)
+    #     other_weights = torch.stack(other_weights, dim=0)
+    #     # print (other_weights[0], other_weights.size())
+    #     return other_weights
+    #
+    # def compute_contribution(self, disk, gen_pts, other_weights, target_pts, id, relation):
+    #
+    #     other_weights = other_weights[relation]
+    #     gen_pts = torch.FloatTensor(np.array(gen_pts))
+    #     other = gen_pts[gen_pts[:, 3] == relation]
+    #     cur = gen_pts[gen_pts[:, 3] == id]
+    #
+    #     denorm_1 = target_pts[target_pts[:, 3] == id].size(0)
+    #     denorm_2 = target_pts[target_pts[:, 3] == relation].size(0)
+    #     denom = denorm_1 * denorm_2
+    #
+    #     # print (gen_pts, other)
+    #     disk = torch.FloatTensor(np.array(disk)).unsqueeze(0)
+    #     # print (disk.size())
+    #     disk = disk.repeat(other.size(0), 1)
+    #
+    #     # pcf = torch.zeros(self.nbbins)
+    #     # weights = torch.zeros(self.nbbins)
+    #     # contribution = torch.zeros(self.nbbins)
+    #
+    #     # for i in range(other.size(0)):
+    #
+    #     dis = utils.fnorm(disk[:, 0:3], other[:, 0:3], self.rmax)
+    #     # print (self.rmax)
+    #     # print ('disk:',disk[:,0:3])
+    #     # print ('other:',other[:,0:3])
+    #     # print (dis)
+    #     # print (other_weights)
+    #
+    #     val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - dis.view(-1, 1).repeat(1, self.nbbins))
+    #
+    #     weights = 1 / self.perimeter_weight(disk[0, 0], disk[0, 1])
+    #
+    #     # print (val.size(), other_weights.size())
+    #
+    #     contribution = torch.sum(other_weights * val, 0)
+    #     # torch.set_printoptions(precision=8)
+    #     # print (contribution,denom)
+    #
+    #     hist = torch.sum(weights * val, 0)
+    #     pcf = hist / self.area
+    #
+    #     contribution = pcf + contribution / self.area
+    #
+    #     pcf = pcf / other.size(0)
+    #     # print (pcf)
+    #     contribution = contribution / denom
+    #     # print (contribution,denom)
+    #     return contribution, pcf
+    #
+    # def compute_error(self, contribution, test_pcf, target_pcf, relation):
+    #     E = 0
+    #     eps = 1e-7
+    #     error_mean = 0
+    #     error_min = 0
+    #     error_max = 0
+    #
+    #     # pcf0 = target_pcf[0]
+    #     # pcf1 = target_pcf[1]
+    #     # target_pcf_mean = torch.mean(torch.cat((pcf0[:,1:2], pcf1[:,1:2]),dim=1),dim=1)
+    #     # target_pcf_max = torch.max(torch.cat((pcf0[:,1:2], pcf1[:,1:2]),dim=1),dim=1)[0]
+    #     # target_pcf_min = torch.min(torch.cat((pcf0[:,1:2], pcf1[:,1:2]),dim=1),dim=1)[0]
+    #     target_pcf_mean = target_pcf[relation][:, 1]
+    #     target_pcf_min = target_pcf[relation][:, 2]
+    #     target_pcf_max = target_pcf[relation][:, 3]
+    #
+    #     # print (torch.max((test_pcf - target_pcf_max)/(target_pcf_max+eps)))
+    #     error_mean = max(((contribution - target_pcf_mean) / (target_pcf_mean + eps)).max(), error_mean)
+    #     # print ('error_mean: ', error_mean)
+    #     error_max = max(((test_pcf - target_pcf_max) / (target_pcf_max + eps)).max(), error_max)
+    #     # print ('error_max: ', error_max)
+    #     error_min = max(((target_pcf_min - test_pcf) / (target_pcf_min + eps)).max(), error_min)
+    #     # print (error_min)
+    #     E = error_mean + max(error_max, error_min);
+    #     # print (E)
+    #     return E
 
     # def forward(self, pts, c, t, dimen=3, use_fnorm=True, mean_pcf=False):
     def forward(self, disks_a, disks_b, same_category, dimen=3, use_fnorm=True):
         # print(disks_a.shape, disks_b.shape, same_category)
-        pcf = torch.zeros(self.nbbins, 2).double().to(self.device)
+        pcf = torch.zeros(self.nbbins, 2).float().to(self.device)
         # hist = torch.zeros(self.nbbins)
-        pcf_lower = torch.ones(self.nbbins).double().to(self.device) * np.inf  # init with very large number
-        pcf_upper = torch.ones(self.nbbins).double().to(self.device) * -np.inf
+        pcf_lower = torch.ones(self.nbbins).float().to(self.device) * np.inf  # init with very large number
+        pcf_upper = torch.ones(self.nbbins).float().to(self.device) * -np.inf
 
         for i in range(disks_a.size(0)):
             pi = disks_a[i]
@@ -371,6 +380,7 @@ class PrettyPCF(torch.nn.Module):
 
         dx = x
         dy = y
+
         idx = self.rs > dx
         if self.rs[idx].size(0) > 0:
             alpha = torch.acos(dx / self.rs[idx])
