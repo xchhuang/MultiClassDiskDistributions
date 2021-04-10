@@ -73,12 +73,15 @@ class ASMCDD(torch.nn.Module):
 
     def computeTarget(self):
         n_classes = len(self.target)
-        plt.figure(1)
+        # plt.figure(1)
         print('relations:', self.relations)
         for i in range(n_classes):
             category_i = i
             target_disks = self.categories[i]
             for j in range(len(self.relations[i])):
+
+                plt.figure(1)
+
                 category_j = self.relations[i][j]
                 parent_disks = self.categories[category_j]
                 # print(len(target_disk), len(parent_disk))
@@ -117,8 +120,8 @@ class ASMCDD(torch.nn.Module):
                 # plt.savefig(self.opt.output_folder + '/pcf_{:}_{:}'.format(category_i, category_j))
                 # plt.clf()
         # plt.ylim([0, 10])
-        plt.savefig(self.opt.output_folder + '/{:}_pcf'.format(self.opt.scene_name))
-        plt.clf()
+                plt.savefig(self.opt.output_folder + '/{:}_pcf_{:}_{:}'.format(self.opt.scene_name, category_i, category_j))
+                plt.clf()
         print('===> computeTarget Done.')
 
     def topologicalSort(self):
@@ -277,8 +280,8 @@ class ASMCDD(torch.nn.Module):
 
                     others[i].append(d_test)
                     fails = 0
-                    if i == 0:
-                        print(d_test)
+                    # if i == 0:
+                    #     print(d_test)
                     for relation in self.relations[i]:
                         current = current_pcf[relation]
                         contrib = contributions[relation]

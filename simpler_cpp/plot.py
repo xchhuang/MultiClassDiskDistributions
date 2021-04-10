@@ -98,16 +98,17 @@ def plot_txt(scene_name):
     plt.savefig('outputs/'+scene_name)
     plt.clf()
 
-    plt.figure(1)
+    
     pcfs, ids = read_pcf(scene_name)
     for i in range(pcfs.shape[0]):
+        plt.figure(1)
         pcf = pcfs[i]
 #        print(pcf.shape)
         plt.plot(pcf[0,:], pcf[1,:])
 #    plt.legend(ids)
 #    plt.ylim([0, 10])
-    plt.savefig('outputs/'+scene_name+'_pcf')
-    plt.clf()
+        plt.savefig('outputs/'+scene_name+'_pcf_{:}'.format(ids[i]))
+        plt.clf()
 
 
 def main():
@@ -115,7 +116,7 @@ def main():
     # plot_txt('praise_the_sun')
     # plot_txt('zerg_rush')
     plot_txt('forest')
-#    plot_txt('constrained')
+   # plot_txt('constrained')
     # plot_txt('constrained_overlap')
 
 

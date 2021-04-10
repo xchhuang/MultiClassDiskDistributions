@@ -226,13 +226,13 @@ void Category::initialize(float domainLength, float e_delta){
         {
             //The disk is accepted, we add it to the list
 //            disks_access.lock();
-            // std::cout << "===> Before Grid Search, n_accepted: " << n_accepted+1 << "/" << output_disks_radii.size() << std::endl;
+            std::cout << "===> Before Grid Search, n_accepted: " << n_accepted+1 << "/" << output_disks_radii.size() << std::endl;
             disks.push_back(d_test);
 //            disks_access.unlock();
             fails=0;
-            if (id == 0) {
-                std::cout << rx << " " << ry << " " << output_disks_radii[n_accepted] << std::endl;
-            }
+            // if (id == 0) {
+            //     std::cout << rx << " " << ry << " " << output_disks_radii[n_accepted] << std::endl;
+            // }
             for(auto relation : relations)
             {
                 auto & current = current_pcf[relation];
@@ -261,7 +261,7 @@ void Category::initialize(float domainLength, float e_delta){
             std::map<unsigned long, Contribution> contribs[N_I][N_J];
             while(n_accepted < output_disks_radii.size())
             {
-                // std::cout << "===> Doing Grid Search: " << n_accepted+1 << "/" << output_disks_radii.size() <<std::endl;
+                std::cout << "===> Doing Grid Search: " << n_accepted+1 << "/" << output_disks_radii.size() <<std::endl;
                 float errors[N_I+1][N_J+1];
                 Compare minError = {INFINITY,0, 0};
 #pragma omp parallel for default(none) collapse(2) shared(output_disks_radii, n_accepted, relations, others, parameters, nSteps, errors, diskfact, contribs, weights, current_pcf, domainLength)

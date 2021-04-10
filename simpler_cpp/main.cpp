@@ -136,6 +136,7 @@ int main(int argc, char *argv[]){
         
     }
 
+    
 
     //Initialization
     std::vector<unsigned long> vs = algo.getFinalSizes(1);
@@ -163,7 +164,7 @@ int main(int argc, char *argv[]){
     out_init_pts.close();
     std::cout << "Algo Done !" << std::endl;
 
-
+    return 0;
     // plot point-based pretty pcf
     auto plots = algo.getPrettyTargetPCFplot(1);
     for(unsigned long id = 0; id < plots.second.size(); id++){
