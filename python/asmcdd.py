@@ -66,7 +66,7 @@ class ASMCDD(torch.nn.Module):
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
         start_time = time()
-        self.initialize()
+        self.initialize(domainLength=2)
         end_time = time()
         print('===> Initialization time: {:.4f}'.format(end_time - start_time))
         utils.plot_disks(self.topological_order, categories, self.outputs, self.opt.output_folder + '/output')
@@ -234,12 +234,16 @@ class ASMCDD(torch.nn.Module):
                 rejected = False
                 e = e_0 + e_delta * fails
                 # if i == 0:
+                # current_radius = output_disks_radii[n_accepted]
+
                 # rx = min_x + np.random.rand() * (max_x - min_x)  # my version
                 # ry = min_y + np.random.rand() * (max_y - min_y)
-                # print(rx, ry)
+                # if i == 0:
+                #     print(current_radius, (domainLength - current_radius))
                 # else:
                 rx = np.random.rand() * domainLength
                 ry = np.random.rand() * domainLength
+                # print(rx, ry)
                 d_test = [rx, ry, output_disks_radii[n_accepted]]
                 d_test = torch.from_numpy(np.array(d_test)).float().to(self.device)  # d_test: torch.Tensor: (3,)
 
@@ -326,14 +330,18 @@ class ASMCDD(torch.nn.Module):
                         currentError = 0
                         for ni in range(1, N_I):
                             for nj in range(1, N_J):
+                                gx = domainLength / N_I * ni
+                                gy = domainLength / N_J * nj
+                                cell_test = [gx, gy, output_disks_radii[n_accepted]]
+                                # if min_x > gx > max_x or min_y > gy > max_y:
+                                #     continue
+                                cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
+
                                 currentError = 0
                                 current_contrib = defaultdict(Contribution)
                                 for relation in self.relations[i]:
                                     current_contrib[relation] = Contribution(self.device, self.nSteps)
 
-                                cell_test = [domainLength / N_I * ni, domainLength / N_J * nj,
-                                             output_disks_radii[n_accepted]]
-                                cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
                                 for relation in self.relations[i]:
                                     # test_pcf = Contribution(self.device, self.nSteps)
                                     same_category = False

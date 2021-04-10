@@ -116,14 +116,15 @@ class PCF(torch.nn.Module):
         # print(x)
         return self.gf * torch.exp(-((x * x)/(self.sigma * self.sigma)))
 
-    def perimeter_weight(self, x, y, diskfact=1):
+    def perimeter_weight(self, x_, y_, diskfact=1):
 
         full_angle = torch.ones(self.nbbins).float() * 2 * math.pi
         full_angle = full_angle.to(self.device)
         weights = torch.zeros_like(full_angle)
-        rs = self.rs
-        # x *= diskfact
-        # y *= diskfact
+        rs = self.rs * diskfact
+        # print(diskfact)
+        x = x_ * diskfact
+        y = y_ * diskfact
         # rs *= diskfact
 
         dx = x
