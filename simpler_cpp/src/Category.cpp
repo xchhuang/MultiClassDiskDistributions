@@ -3,6 +3,7 @@
 //
 #include <algorithm>
 #include <random>
+#include <fstream>
 #include "../include/Category.h"
 #include "../include/computeFunctions.h"
 
@@ -170,6 +171,8 @@ void Category::initialize(float domainLength, float e_delta){
 
     std::map<unsigned long, Contribution> contributions;
 
+    std::ofstream out_debug("../outputs/debug_forest_"+std::to_string(id)+".txt");
+
     do{
         // std::cout << "Error: " << id <<std::endl;
         bool rejected=false;
@@ -197,8 +200,8 @@ void Category::initialize(float domainLength, float e_delta){
                 float ce = compute_error(test_pcf, current_pcf[relation], target_pcf[relation]);
                 // if (id == 1 && relation == 0) {
                 //     std::cout << "n_accepted: " << n_accepted << std::endl;
-                //     for (int kk=0; kk<test_pcf.pcf.size(); kk++) {
-                //         std::cout << test_pcf.pcf[kk] << " ";
+                //     for (int kk=0; kk<test_pcf.contribution.size(); kk++) {
+                //         std::cout << test_pcf.contribution[kk] << " ";
                 //     }
                 //     std::cout << std::endl;
                 // }
@@ -231,8 +234,12 @@ void Category::initialize(float domainLength, float e_delta){
 //            disks_access.unlock();
             fails=0;
             // if (id == 0) {
-            //     std::cout << rx << " " << ry << " " << output_disks_radii[n_accepted] << std::endl;
+            out_debug << rx << " " << ry << " " << output_disks_radii[n_accepted] << std::endl;
+            // std::cout << rx << " " << ry << " " << output_disks_radii[n_accepted] << std::endl;
             // }
+            if (id == 1) {
+                std::cout << n_accepted << " " << rx << " " << ry << " " << output_disks_radii[n_accepted] << std::endl;
+            }
             for(auto relation : relations)
             {
                 auto & current = current_pcf[relation];
@@ -243,10 +250,17 @@ void Category::initialize(float domainLength, float e_delta){
                 }
                 for(unsigned long k=0; k<nSteps; k++)
                 {   
-                    // if (id == 1)
-                    //     std::cout << "contrib.contribution[k]: " << n_accepted << " " << contrib.contribution[k] << std::endl;
+                    
                     current[k]+=contrib.contribution[k];
                 }
+
+                // newly added for debugging
+                if (id == 1) {
+                    for(unsigned long k=0; k<nSteps; k++) {   
+                        std::cout << current[k] << " ";
+                    }
+                }
+                std::cout << std::endl;
             }
             n_accepted++;
         }
@@ -338,6 +352,7 @@ void Category::initialize(float domainLength, float e_delta){
 //        pcf.insert_or_assign(r, compute_pcf(disks, others[r].disks, target_areas[r], target_radii[r], target_rmax[r], parameters));
 //    }
     initialized=true;
+    out_debug.close();
 
 }
 

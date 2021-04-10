@@ -30,22 +30,30 @@ def read_pcf(scene_name):
 def read_txt(path='build/init_pts_final.txt', start=1, normalize=True):
     pts = []
     cla = []
+    id_map = {}
     with open(path) as f:
         lines = f.readlines()
-        lines = lines[start:]
+        first_row = lines[0].strip().split(' ')
+        n = int(first_row[0])
+        for i in range(n):
+            id_map[int(first_row[i+1])] = i
+            
+        lines = lines[1:]
         for line in lines:
             line = line.strip().split()
 #            if normalize:
             c, x, y, r = line
             x = float(x) / 10000
             y = float(y) / 10000
+            r = float(r) / 10000
             c = int(c)
+            c = id_map[c]
 #            else:
 #                x, y, c, r = line
 #                x = float(x)
 #                y = float(y)
 #                c = int(c)
-            pts.append([x, y])
+            pts.append([x, y, r])
             cla.append(c)
 
     pts = np.array(pts)
@@ -78,23 +86,37 @@ def read_all_txt(path='outputs'):
         plt.clf()
 
 
+
+colors_dict = {
+    0: 'r',
+    1: 'g',
+    2: 'b',
+    3: 'k',
+}
+
 def plot_txt(scene_name):
     init_cla, init_pts = read_txt(path='outputs/'+scene_name+'_init.txt', start=1, normalize=False)
     tar_cla, tar_pts = read_txt(path='examples/'+scene_name+'.txt', start=1, normalize=True)
 
-    plt.figure(1)
-    plt.subplot(121)
+    # plt.figure(1)
+    fig, ax = plt.subplots()
+    # plt.subplot(121)
     plt.title('Synthesized')
-    plt.scatter(init_pts[:, 0], init_pts[:, 1], c=init_cla, s=5)
+    # plt.scatter(init_pts[:, 0], init_pts[:, 1], c=init_cla, s=5)
+    for i in range(init_pts.shape[0]):
+        k = init_cla[i]
+        # print(k)
+        circle = plt.Circle((init_pts[i, 0], init_pts[i, 1]), init_pts[i, 2], color=colors_dict[k], fill=False)
+        ax.add_artist(circle)
     plt.axis('equal')
     plt.xlim([-0.2, 1.2])
     plt.ylim([-0.2, 1.2])
-    plt.subplot(122)
-    plt.title('Input Exemplar')
-    plt.scatter(tar_pts[:, 0], tar_pts[:, 1], c=tar_cla, s=5)
-    plt.axis('equal')
-    plt.xlim([-0.2, 1.2])
-    plt.ylim([-0.2, 1.2])
+    # plt.subplot(122)
+    # plt.title('Input Exemplar')
+    # plt.scatter(tar_pts[:, 0], tar_pts[:, 1], c=tar_cla, s=5)
+    # plt.axis('equal')
+    # plt.xlim([-0.2, 1.2])
+    # plt.ylim([-0.2, 1.2])
     plt.savefig('outputs/'+scene_name)
     plt.clf()
 

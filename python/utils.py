@@ -64,7 +64,6 @@ colors_dict = {
     1: 'g',
     2: 'b',
     3: 'k',
-
 }
 
 def plot_disks(topological_order, categories, outputs, filename):

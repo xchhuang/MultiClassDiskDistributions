@@ -28,10 +28,12 @@ def compute_contribution(device, nbbins, pi, others, other_weights, cur_pcf_mode
     val = cur_pcf_model.gaussianKernel(rs.view(1, -1) / rmax - d.view(-1, 1).repeat(1, nbbins))
     out.pcf = torch.sum(val, 0)
     # print(out.pcf)
+    # print(res.shape, other_weights.shape)
     out.contribution = torch.sum(val * other_weights, 0)
     # print(out.contribution)
-    out.pcf *= out.weights / area
+    out.pcf = out.pcf * out.weights / area
     out.contribution = out.pcf + out.contribution / area
+    # print(len(others))
     out.pcf /= len(others)
     # print(out.contribution.shape, target_size)
     out.contribution /= target_size
@@ -127,7 +129,7 @@ class PCF(torch.nn.Module):
         idx = rs > dx
         if rs[idx].size(0) > 0:
             alpha = torch.acos(dx / rs[idx])
-            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx));
+            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx))
 
         dx = y
         dy = x
