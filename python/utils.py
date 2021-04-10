@@ -69,8 +69,8 @@ colors_dict = {
 def plot_disks(topological_order, categories, outputs, filename):
     fig, ax = plt.subplots()
     for k in topological_order:
-        if k > 1:
-            break
+        # if k > 1:
+        #     break
         # print(k)
         out = outputs[k]
         # print(out.shape)
@@ -82,8 +82,8 @@ def plot_disks(topological_order, categories, outputs, filename):
             circle = plt.Circle((out[i, 0], out[i, 1]), out[i, 2], color=colors_dict[k], fill=False)
             ax.add_artist(circle)
         plt.axis('equal')
-        plt.xlim([-0.2, 1.2])
-        plt.ylim([-0.2, 1.2])
+        plt.xlim([-0.5, 2.5])
+        plt.ylim([-0.5, 2.5])
         # plt.title('Synthesized')
     plt.savefig(filename)
     plt.clf()
