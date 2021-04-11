@@ -155,8 +155,8 @@ def plot_txt(scene_name):
 def main():
     # read_all_txt()
     # plot_txt('praise_the_sun')
-    # plot_txt('zerg_rush')
-    plot_txt('forest')
+    plot_txt('zerg_rush')
+    # plot_txt('forest')
     # plot_txt('constrained')
     # plot_txt('constrained_overlap')
 
