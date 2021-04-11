@@ -173,16 +173,26 @@ void Category::initialize(float domainLength, float e_delta){
 
     // std::ofstream out_debug("../outputs/debug_forest_"+std::to_string(id)+".txt");
 
+    std::uniform_real_distribution<float> rand_0to1(0, 1);
+    
     do{
         // std::cout << "Error: " << id <<std::endl;
         bool rejected=false;
         float e = e_0 + e_delta*fails;
         // std::cout << "e: " << n_accepted << " " << e << std::endl;
         //Generate a random disk
+
         float rx = randf(rand_gen);
         float ry = randf(rand_gen);
-        // rx = 0.5;
-        // ry = 0.5;
+
+        // float rx = rand_0to1(rand_gen);
+        // float ry = rand_0to1(rand_gen);
+        // float min_xy = 0.1;
+        // if (id == 0) {
+        //     rx = min_xy + rx * (domainLength - min_xy * 2);
+        //     ry = min_xy + ry * (domainLength - min_xy * 2);
+        // } 
+        
         Disk d_test(rx, ry, output_disks_radii[n_accepted]);
         
         // std::cout << "n_accepted: " << n_accepted << std::endl;
@@ -207,7 +217,6 @@ void Category::initialize(float domainLength, float e_delta){
                 // }
 
                 if(e < ce) {
-                    
                     //Disk is rejected if the error is too high
                     rejected=true;
                     break;
@@ -270,21 +279,34 @@ void Category::initialize(float domainLength, float e_delta){
             //We have exceeded the 1000 fails threshold, we switch to a parallel grid search
             
             //Grid search
-            constexpr unsigned long N_I = 100;
-            constexpr unsigned long N_J = 100;
+            constexpr unsigned long N_I = 80*2;
+            constexpr unsigned long N_J = 80*2;
             std::map<unsigned long, Contribution> contribs[N_I][N_J];
             while(n_accepted < output_disks_radii.size())
             {
                 std::cout << "===> Doing Grid Search: " << n_accepted+1 << "/" << output_disks_radii.size() <<std::endl;
                 float errors[N_I+1][N_J+1];
                 Compare minError = {INFINITY,0, 0};
-#pragma omp parallel for default(none) collapse(2) shared(output_disks_radii, n_accepted, relations, others, parameters, nSteps, errors, diskfact, contribs, weights, current_pcf, domainLength)
+// #pragma omp parallel for default(none) collapse(2) shared(output_disks_radii, n_accepted, relations, others, parameters, nSteps, errors, diskfact, contribs, weights, current_pcf, domainLength)
                 for(unsigned long i=1; i<N_I; i++)
                 {
                     for(unsigned long j=1; j<N_J; j++)
                     {
                         float currentError=0;
-                        Disk cell_test((domainLength/N_I)*i, (domainLength/N_J)*j, output_disks_radii[n_accepted]);
+                        float cell_x = (domainLength/N_I)*i;
+                        float cell_y = (domainLength/N_J)*j;
+                        Disk cell_test(cell_x, cell_y, output_disks_radii[n_accepted]);
+                        // // std::cout << cell_x << " " << cell_y << std::endl;
+                        // if (id == 0) {
+                        //     if ((cell_x < min_xy || cell_x > domainLength - min_xy) || (cell_y < min_xy || cell_y > domainLength - min_xy)) {
+                        //         // std::cout << cell_x << " " << cell_y << std::endl;
+                        //         continue;
+                        //     } else {
+                        //         // std::cout << cell_x << " " << cell_y << std::endl;
+                        //     }
+                        // }
+                        
+
                         for(auto && relation : relations)
                         {
                             Contribution test_pcf;

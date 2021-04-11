@@ -101,7 +101,7 @@ def plot_txt(scene_name):
     # plt.figure(1)
     fig, ax = plt.subplots()
     # plt.subplot(121)
-    plt.title('Synthesized')
+    # plt.title('Synthesized')
     # plt.scatter(init_pts[:, 0], init_pts[:, 1], c=init_cla, s=5)
     for i in range(init_pts.shape[0]):
         k = init_cla[i]
@@ -120,10 +120,25 @@ def plot_txt(scene_name):
     # plt.xlim([-0.2, 1.2])
     # plt.ylim([-0.2, 1.2])
     
-    plt.savefig('outputs/'+scene_name)
+    plt.savefig('outputs/out_'+scene_name)
     plt.clf()
 
     
+    fig, ax = plt.subplots()
+    for i in range(tar_pts.shape[0]):
+        k = tar_cla[i]
+        # print(k)
+        circle = plt.Circle((tar_pts[i, 0], tar_pts[i, 1]), tar_pts[i, 2], color=colors_dict[k], fill=False)
+        ax.add_artist(circle)
+    plt.axis('equal')
+    plt.xlim([-0.5, 2.5])
+    plt.ylim([-0.5, 2.5])
+    # plt.xlim([-0.2, 1.2])
+    # plt.ylim([-0.2, 1.2])
+    plt.savefig('outputs/tar_'+scene_name)
+    plt.clf()
+
+
     pcfs, ids = read_pcf(scene_name)
     for i in range(pcfs.shape[0]):
         plt.figure(1)
@@ -141,7 +156,7 @@ def main():
     plot_txt('praise_the_sun')
     plot_txt('zerg_rush')
     plot_txt('forest')
-    plot_txt('constrained')
+    # plot_txt('constrained')
     plot_txt('constrained_overlap')
 
 

@@ -136,9 +136,10 @@ float compute_error(Contribution const & contribution, std::vector<float> const 
     // std::cout << error_mean << std::endl;
     float error_min = -INFINITY;
     float error_max = -INFINITY;
+    float eps = 0;
     for(unsigned long k=0; k<currentPCF.size(); k++) {
-        float x = (currentPCF[k]+contribution.contribution[k] - target[k].mean) / target[k].mean;
-        if (x != x) {
+        float x = (currentPCF[k]+contribution.contribution[k] - target[k].mean) / (target[k].mean + eps);
+        if (x != x) {   // NaN
             continue;
         }
         // std::cout << "mean: " << x << std::endl;
@@ -148,7 +149,7 @@ float compute_error(Contribution const & contribution, std::vector<float> const 
            
     }
     for(unsigned long k=0; k<currentPCF.size(); k++) {
-        float x = (contribution.pcf[k] - target[k].max) / target[k].max;
+        float x = (contribution.pcf[k] - target[k].max) / (target[k].max + eps);
         if (x != x) {
             continue;
         }
@@ -156,7 +157,7 @@ float compute_error(Contribution const & contribution, std::vector<float> const 
         // std::cout << "error_max: " << k << " " << error_max << std::endl;
     }
     for(unsigned long k=0; k<currentPCF.size(); k++) {
-        float x = (target[k].min - contribution.pcf[k]) / target[k].min;
+        float x = (target[k].min - contribution.pcf[k]) / (target[k].min + eps);
         if (x != x) {
             continue;
         }
