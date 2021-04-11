@@ -66,7 +66,7 @@ class ASMCDD(torch.nn.Module):
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
         start_time = time()
-        self.initialize(domainLength=2)
+        self.initialize(domainLength=1)
         end_time = time()
         print('===> Initialization time: {:.4f}'.format(end_time - start_time))
         utils.plot_disks(self.topological_order, categories, self.outputs, self.opt.output_folder + '/output')
@@ -236,13 +236,15 @@ class ASMCDD(torch.nn.Module):
                 # if i == 0:
                 # current_radius = output_disks_radii[n_accepted]
 
-                # rx = min_x + np.random.rand() * (max_x - min_x)  # my version
-                # ry = min_y + np.random.rand() * (max_y - min_y)
                 # if i == 0:
                 #     print(current_radius, (domainLength - current_radius))
                 # else:
                 rx = np.random.rand() * domainLength
                 ry = np.random.rand() * domainLength
+                if i == 0:
+                    min_xy = 0.09
+                    rx = min_xy + np.random.rand() * (domainLength - min_xy * 2)  # my version
+                    ry = min_xy + np.random.rand() * (domainLength - min_xy * 2)
                 # print(rx, ry)
                 d_test = [rx, ry, output_disks_radii[n_accepted]]
                 d_test = torch.from_numpy(np.array(d_test)).float().to(self.device)  # d_test: torch.Tensor: (3,)
@@ -314,7 +316,7 @@ class ASMCDD(torch.nn.Module):
 
                 if fails > max_fails:
                     # exceed fail threshold, switch to a parallel grid search
-                    N_I = N_J = 100
+                    N_I = N_J = 80*int(domainLength)  # 100
                     minError_contrib = defaultdict(Contribution)
                     for relation in self.relations[i]:
                         minError_contrib[relation] = Contribution(self.device, self.nSteps)
