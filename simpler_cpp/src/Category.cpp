@@ -279,8 +279,8 @@ void Category::initialize(float domainLength, float e_delta){
             //We have exceeded the 1000 fails threshold, we switch to a parallel grid search
             
             //Grid search
-            constexpr unsigned long N_I = 80*2;
-            constexpr unsigned long N_J = 80*2;
+            constexpr unsigned long N_I = 80*(int)domainLength;
+            constexpr unsigned long N_J = 80*(int)domainLength;
             std::map<unsigned long, Contribution> contribs[N_I][N_J];
             while(n_accepted < output_disks_radii.size())
             {
