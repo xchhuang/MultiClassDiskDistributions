@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import math
 import glob
 
+# scp -r xhuang@slurm-submit.mpi-inf.mpg.de:/HPS/MultiClassSampling/work/MultiClassDiskDistributions/simpler_cpp/outputs outputs
 
 def read_pcf(scene_name):
     files = glob.glob('outputs/'+scene_name+'_pcf_*.txt')
@@ -153,11 +154,11 @@ def plot_txt(scene_name):
 
 def main():
     # read_all_txt()
-    plot_txt('praise_the_sun')
-    plot_txt('zerg_rush')
+    # plot_txt('praise_the_sun')
+    # plot_txt('zerg_rush')
     plot_txt('forest')
     # plot_txt('constrained')
-    plot_txt('constrained_overlap')
+    # plot_txt('constrained_overlap')
 
 
 if __name__ == '__main__':
