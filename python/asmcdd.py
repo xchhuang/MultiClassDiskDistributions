@@ -69,8 +69,8 @@ class ASMCDD(torch.nn.Module):
         self.initialize(domainLength=1)
         end_time = time()
         print('===> Initialization time: {:.4f}'.format(end_time - start_time))
-        utils.plot_disks(self.topological_order, categories, self.outputs, self.opt.output_folder + '/output')
-        utils.plot_disks(self.topological_order, categories, self.target, self.opt.output_folder + '/target')
+        utils.plot_disks(self.topological_order, self.outputs, self.opt.output_folder + '/output')
+        utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
 
     def computeTarget(self):
         n_classes = len(self.target)
@@ -129,35 +129,28 @@ class ASMCDD(torch.nn.Module):
                 plt.clf()
         print('===> computeTarget Done.')
 
-    def topologicalSort(self):
-        graph = defaultdict(list)
-        for k in range(len(self.target)):
-            if len(self.relations[k]) == 1:
-                graph[k] = []
-            else:
-                for v in self.relations[k]:
-                    if v != k:
-                        graph[k].append(v)
-        # root_id = 0
-        # all_children = set()
-        # for i in range(len(self.target)):
-        #     for j in graph[i]:
-        #         all_children.add(j)
-        # all_children = list(all_children)
-        # for k in self.relations:  # find a root node id
-        #     if k not in all_children:
-        #         root_id = k
-        #         break
-
-        return graph  # , root_id
+    # def topologicalSort(self, num_classes, relations):
+    #     graph = defaultdict(list)
+    #     for k in range(num_classes):
+    #         if len(relations[k]) == 1:
+    #             graph[k] = []
+    #         else:
+    #             for v in relations[k]:
+    #                 if v != k:
+    #                     graph[k].append(v)
+    #
+    #     ts = TopologicalSorter(graph)
+    #     topological_order = list(ts.static_order())
+    #
+    #     return graph, topological_order  # , root_id
 
     def initialize(self, domainLength=1, e_delta=1e-4):
         # first find the topological oder
-        graph = self.topologicalSort()
+        graph, topological_order = utils.topologicalSort(len(self.target), self.relations)
         # print(graph)
         # graph = {"D": ["B", "C"], "C": ["A"], "B": ["A"]}
-        ts = TopologicalSorter(graph)
-        topological_order = list(ts.static_order())
+        # ts = TopologicalSorter(graph)
+        # topological_order = list(ts.static_order())
         self.topological_order = topological_order
         print('topological_order:', topological_order)
 
@@ -241,10 +234,10 @@ class ASMCDD(torch.nn.Module):
                 # else:
                 rx = np.random.rand() * domainLength
                 ry = np.random.rand() * domainLength
-                if i == 0:
-                    min_xy = 0.09
-                    rx = min_xy + np.random.rand() * (domainLength - min_xy * 2)  # my version
-                    ry = min_xy + np.random.rand() * (domainLength - min_xy * 2)
+                # if i == 0:
+                #     min_xy = 0.09
+                #     rx = min_xy + np.random.rand() * (domainLength - min_xy * 2)  # my version
+                #     ry = min_xy + np.random.rand() * (domainLength - min_xy * 2)
                 # print(rx, ry)
                 d_test = [rx, ry, output_disks_radii[n_accepted]]
                 d_test = torch.from_numpy(np.array(d_test)).float().to(self.device)  # d_test: torch.Tensor: (3,)

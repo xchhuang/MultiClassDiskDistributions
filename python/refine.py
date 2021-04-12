@@ -20,20 +20,7 @@ device = torch.device('cpu')    # seems cpu is faster
 # np.random.seed(0)
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.txt', help='config file name')
-parser.add_argument('--refine', action='store_true')
 opt = parser.parse_args()
-
-
-
-#
-# def plot_pts(title, pts):
-#     plt.figure(1)
-#     ax = plt.gca()
-#     ax.cla()
-#     plt.scatter(pts[:, 0], pts[:, 1], s=5, c='r')
-#     ax.set_aspect('equal')
-#     plt.savefig(opt.outd + '/' + title)
-#     plt.clf()
 
 
 def main():

@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-
+from collections import defaultdict
+from graphlib import TopologicalSorter
 
 class Contribution:
     def __init__(self, device, nbbins):
@@ -58,7 +59,6 @@ def diskDistance(a, b, rmax):
     return d_norm
 
 
-
 colors_dict = {
     0: 'r',
     1: 'g',
@@ -66,7 +66,8 @@ colors_dict = {
     3: 'k',
 }
 
-def plot_disks(topological_order, categories, outputs, filename):
+
+def plot_disks(topological_order, outputs, filename):
     fig, ax = plt.subplots()
     for k in topological_order:
         # if k > 1:
@@ -89,3 +90,19 @@ def plot_disks(topological_order, categories, outputs, filename):
         # plt.title('Synthesized')
     plt.savefig(filename)
     plt.clf()
+
+
+def topologicalSort(num_classes, relations):
+    graph = defaultdict(list)
+    for k in range(num_classes):
+        if len(relations[k]) == 1:
+            graph[k] = []
+        else:
+            for v in relations[k]:
+                if v != k:
+                    graph[k].append(v)
+
+    ts = TopologicalSorter(graph)
+    topological_order = list(ts.static_order())
+
+    return graph, topological_order  # , root_id
