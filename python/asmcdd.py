@@ -35,20 +35,19 @@ def get_weights(disks, cur_pcf_model, diskfact):
     return weights
 
 
-def iterative_dfs(graph, start, path=set()):
-    q = [start]
-    ans = []
-    while q:
-        v = q[-1]  # item 1,just access, don't pop
-        path = path.union({v})
-        children = [x for x in graph[v] if x not in path]
-        if not children:  # no child or all of them already visited
-            ans = [v] + ans
-            q.pop()
-        else:
-            q.append(children[0])  # item 2, push just one child
-
-    return ans
+# def iterative_dfs(graph, start, path=set()):
+#     q = [start]
+#     ans = []
+#     while q:
+#         v = q[-1]  # item 1,just access, don't pop
+#         path = path.union({v})
+#         children = [x for x in graph[v] if x not in path]
+#         if not children:  # no child or all of them already visited
+#             ans = [v] + ans
+#             q.pop()
+#         else:
+#             q.append(children[0])  # item 2, push just one child
+#     return ans
 
 
 class ASMCDD(torch.nn.Module):
@@ -58,7 +57,7 @@ class ASMCDD(torch.nn.Module):
         self.opt = opt
         self.categories = categories
         self.relations = relations
-        self.nSteps = 50
+        self.nSteps = opt.nSteps
         self.target = torch.nn.ParameterList()
         for k in categories.keys():
             self.target.append(torch.nn.Parameter(torch.from_numpy(np.array(categories[k])).float()))
@@ -395,5 +394,8 @@ class ASMCDD(torch.nn.Module):
             self.outputs.append(torch.stack(others[k], 0))
 
     def forward(self):
-        for i in range(3):
-            print(self.w[i].shape)
+        """
+        TODO: not implemented
+        """
+        pass
+

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 from graphlib import TopologicalSorter
 
+
 class Contribution:
     def __init__(self, device, nbbins):
         self.weights = torch.zeros(nbbins).float().to(device)
@@ -106,3 +107,8 @@ def topologicalSort(num_classes, relations):
     topological_order = list(ts.static_order())
 
     return graph, topological_order  # , root_id
+
+
+def toroidalWrapAround(points, domain_size=1):
+    points = torch.where(torch.gt(points, domain_size), points - torch.floor(points), points)
+    return torch.where(torch.lt(points, 0), points + torch.ceil(torch.abs(points)), points)

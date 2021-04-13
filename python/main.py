@@ -21,6 +21,7 @@ device = torch.device('cpu')    # seems cpu is faster
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.txt', help='config file name')
 parser.add_argument('--refine', action='store_true')
+parser.add_argument('--nSteps', type=int, default=50, help='number of bins for computing PCF')
 opt = parser.parse_args()
 
 
