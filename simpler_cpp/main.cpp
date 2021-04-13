@@ -164,12 +164,15 @@ int main(int argc, char *argv[]){
     out_init_pts.close();
     std::cout << "Algo Done !" << std::endl;
 
-    return 0;
+    // return 0;
     // plot point-based pretty pcf
     auto plots = algo.getPrettyTargetPCFplot(1);
     for(unsigned long id = 0; id < plots.second.size(); id++){
-        std::ofstream out_tar_pts("../outputs/"+example_filename+"_pcf_"+std::to_string(id)+".txt");
+        std::ofstream out_tar_pts("../outputs/"+example_filename+"_prettypcf_"+std::to_string(id)+".txt");
         // std::cout << plots.second[id].second.size() << std::endl;
+        // int id_a = plots[id].first.first;
+        // int id_b = plots[id].first.second;
+        // std::cout << "plots pcf: id_a, id_b" << id_a << " " << id_b << std::endl;
         for(unsigned long i = 0; i < plots.second[id].second.size(); i++) {
             // std::cout << plots.first[id][i].x << " " << plots.first[id][i].y << " " << plots.first[id][i].r << std::endl;
             out_tar_pts << plots.second[id].second[i].first << " ";

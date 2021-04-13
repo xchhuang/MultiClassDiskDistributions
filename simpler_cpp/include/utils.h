@@ -59,7 +59,7 @@ struct ASMCDD_params{
     float step = 0.1;
     float sigma = 0.25;
     float limit = 5;
-    float domainLength = 2;
+    float domainLength = 1;
     unsigned long max_iter = 2000;
     float threshold = 0.001;
     float error_delta=0.0001;

@@ -152,6 +152,33 @@ def plot_txt(scene_name):
         plt.clf()
 
 
+def test_pretty_pcf(scene_name):
+    files = glob.glob('outputs/'+scene_name+'_prettypcf_*.txt')
+    pcfs = []
+    ids = []
+    for file in files:
+        # print(file)
+        num = file.split('/')[-1].split('.')[0].split('_')
+        # print(num[-2:])
+        ids.append(num[-1])
+        with open(file) as f:
+            lines = f.readlines()
+            xx, yy = lines[0], lines[1]
+            # print(xx)
+            xx = xx.strip().split(' ')
+            xx = [float(x) for x in xx]
+            yy = yy.strip().split(' ')
+            yy = [float(y) for y in yy]
+        pcfs.append([xx, yy])
+    pcfs = np.array(pcfs)
+    N = pcfs.shape[0]
+    # for i in range(N):
+    #     plt.figure(1)
+    #     plt.plot(pcfs[i,0,:], pcfs[i,1,:], 'r-')
+    #     plt.show()
+    return pcfs, ids
+
+
 def main():
     # read_all_txt()
     # plot_txt('praise_the_sun')
@@ -160,6 +187,8 @@ def main():
     plot_txt('constrained')
     # plot_txt('constrained_overlap')
 
+    # test
+    # test_pretty_pcf('constrained')
 
 if __name__ == '__main__':
     main()
