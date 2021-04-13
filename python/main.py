@@ -22,6 +22,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.txt', help='config file name')
 parser.add_argument('--refine', action='store_true')
 parser.add_argument('--nSteps', type=int, default=50, help='number of bins for computing PCF')
+parser.add_argument('--sigma', type=float, default=0.25, help='smoothness of Gaussian kernel sigma for computing PCF')
 opt = parser.parse_args()
 
 

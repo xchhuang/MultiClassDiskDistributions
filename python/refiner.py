@@ -21,18 +21,17 @@ from graphlib import TopologicalSorter
 
 
 class Refiner(torch.nn.Module):
-    def __init__(self, device, opt, output, trainable_index):
+    def __init__(self, device, opt, trainable_pts):
         super(Refiner, self).__init__()
         self.device = device
         self.opt = opt
         self.nSteps = opt.nSteps
-        self.trainable_index = trainable_index
 
         self.w_pos = torch.nn.ParameterList()
         self.w_feat = []    # features are fixed, not learnable
 
-        self.w_pos.append(torch.nn.Parameter(output[trainable_index][:, 0:2]))
-        self.w_feat.append(output[trainable_index][:, 2:])
+        self.w_pos.append(torch.nn.Parameter(trainable_pts[:, 0:2]))
+        self.w_feat.append(trainable_pts[:, 2:])
 
     def forward(self):
         pos = torch.clamp(self.w_pos[0], 0, 1)

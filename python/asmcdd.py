@@ -8,13 +8,14 @@ from tqdm import tqdm
 import datetime
 import os
 import glob
-from computeFunctions import PCF, PrettyPCF
+from computeFunctions import PCF, PrettyPCF, PCF_utk
 from collections import defaultdict
 from utils import Contribution
 from computeFunctions import compute_contribution, compute_error
 import utils
 import copy
 from graphlib import TopologicalSorter
+from refiner import Refiner
 
 
 # np.random.seed(0)
@@ -35,21 +36,6 @@ def get_weights(disks, cur_pcf_model, diskfact):
     return weights
 
 
-# def iterative_dfs(graph, start, path=set()):
-#     q = [start]
-#     ans = []
-#     while q:
-#         v = q[-1]  # item 1,just access, don't pop
-#         path = path.union({v})
-#         children = [x for x in graph[v] if x not in path]
-#         if not children:  # no child or all of them already visited
-#             ans = [v] + ans
-#             q.pop()
-#         else:
-#             q.append(children[0])  # item 2, push just one child
-#     return ans
-
-
 class ASMCDD(torch.nn.Module):
     def __init__(self, device, opt, categories, relations):
         super(ASMCDD, self).__init__()
@@ -58,18 +44,22 @@ class ASMCDD(torch.nn.Module):
         self.categories = categories
         self.relations = relations
         self.nSteps = opt.nSteps
+        self.sigma = opt.sigma
         self.target = torch.nn.ParameterList()
         for k in categories.keys():
             self.target.append(torch.nn.Parameter(torch.from_numpy(np.array(categories[k])).float()))
         self.pcf_model = defaultdict(dict)
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
-        start_time = time()
+        self.outputs = []
+
+        self.plot_pretty_pcf(self.target, self.target, self.relations)
+
         self.initialize(domainLength=1)
-        end_time = time()
-        print('===> Initialization time: {:.4f}'.format(end_time - start_time))
-        utils.plot_disks(self.topological_order, self.outputs, self.opt.output_folder + '/output')
-        utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
+
+
+        # utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
+        # utils.plot_disks(self.topological_order, self.outputs, self.opt.output_folder + '/output')
 
     def computeTarget(self):
         n_classes = len(self.target)
@@ -97,7 +87,7 @@ class ASMCDD(torch.nn.Module):
                 # if not (category_i == 0 and category_j == 0):
                 #     continue
                 # print(category_j, category_i)
-                cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=0.25, npoints=len(target_disks),
+                cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=self.sigma, npoints=len(target_disks),
                                     n_rmax=5).to(self.device)
                 print('Target Info, id: {:}, parent: {:}, rmax: {:.4f}'.format(category_i, category_j,
                                                                                cur_pcf_model.rmax))
@@ -128,28 +118,61 @@ class ASMCDD(torch.nn.Module):
                 plt.clf()
         print('===> computeTarget Done.')
 
-    # def topologicalSort(self, num_classes, relations):
-    #     graph = defaultdict(list)
-    #     for k in range(num_classes):
-    #         if len(relations[k]) == 1:
-    #             graph[k] = []
-    #         else:
-    #             for v in relations[k]:
-    #                 if v != k:
-    #                     graph[k].append(v)
-    #
-    #     ts = TopologicalSorter(graph)
-    #     topological_order = list(ts.static_order())
-    #
-    #     return graph, topological_order  # , root_id
+    def plot_pretty_pcf(self, exemplar, output, relations):
+        n_classes = len(exemplar)
+        for i in range(n_classes):
+            category_i = i
+            exemplar_disks = exemplar[category_i]
+            output_disks = output[category_i]
+            for j in range(len(relations[i])):
+                plt.figure(1)
+                category_j = relations[i][j]
+                exemplar_parent_disks = exemplar[category_j]
+                output_parent_disks = output[category_j]
+                same_category = False
+                if category_i == category_j:
+                    same_category = True
+                # cur_pcf_model = PCF(self.device, nbbins=self.opt.nSteps, sigma=0.25, npoints=len(exemplar_disks),
+                #                     n_rmax=5).to(self.device)
+                # exemplar_pcf_mean, exemplar_pcf_min, exemplar_pcf_max = cur_pcf_model(exemplar_disks,
+                #                                                                       exemplar_parent_disks,
+                #                                                                       same_category=same_category,
+                #                                                                       dimen=3,
+                #                                                                       use_fnorm=True)
+                #
+                # output_pcf_mean, output_pcf_min, output_pcf_max = cur_pcf_model(output_disks,
+                #                                                                 output_parent_disks,
+                #                                                                 same_category=same_category,
+                #                                                                 dimen=3,
+                #                                                                 use_fnorm=True)
+                #
+                # self.pcf_model[category_i][category_j] = cur_pcf_model
+                # self.target_pcfs[category_i][category_j] = torch.cat([exemplar_pcf_mean, exemplar_pcf_min.unsqueeze(1),
+                #                                                       exemplar_pcf_max.unsqueeze(1)], 1)
+                # print('pretty:', len(exemplar_disks))
+                pretty_pcf_model = PrettyPCF(self.device, nbbins=self.opt.nSteps, sigma=0.25,
+                                             npoints=len(exemplar_disks), n_rmax=5).to(self.device)
+
+                exemplar_pcf_mean = pretty_pcf_model(exemplar_disks, exemplar_parent_disks, same_category)
+                output_pcf_mean = pretty_pcf_model(output_disks, output_parent_disks, same_category)
+
+                # self.pcf_model[category_i][category_j] = pretty_pcf_model
+                # self.target_pcfs[category_i][category_j] = exemplar_pcf_mean
+
+                # plt.figure(1)
+                plt.plot(exemplar_pcf_mean[:, 0].detach().cpu().numpy(), exemplar_pcf_mean[:, 1].detach().cpu().numpy(),
+                         'r-')
+                plt.plot(output_pcf_mean[:, 0].detach().cpu().numpy(), output_pcf_mean[:, 1].detach().cpu().numpy(),
+                         'g-')
+                plt.legend(['exemplar', 'output'])
+                plt.savefig(
+                    self.opt.output_folder + '/{:}_pcf_{:}_{:}'.format(self.opt.scene_name, category_i, category_j))
+                plt.clf()
+        print('===> Plot Pretty PCF, Done.')
 
     def initialize(self, domainLength=1, e_delta=1e-4):
         # first find the topological oder
         graph, topological_order = utils.topologicalSort(len(self.target), self.relations)
-        # print(graph)
-        # graph = {"D": ["B", "C"], "C": ["A"], "B": ["A"]}
-        # ts = TopologicalSorter(graph)
-        # topological_order = list(ts.static_order())
         self.topological_order = topological_order
         print('topological_order:', topological_order)
 
@@ -174,6 +197,7 @@ class ASMCDD(torch.nn.Module):
         #             l = [float(x) for x in line]
         #             pts.append(l)
         #     predefined_id_pts[i] = pts
+        class_done = []
 
         for i in topological_order:
             # if i > 1:
@@ -202,7 +226,7 @@ class ASMCDD(torch.nn.Module):
             current_pcf = defaultdict(list)
             contributions = defaultdict(Contribution)
             weights = defaultdict(list)
-            cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=0.25, npoints=len(target_disks), n_rmax=5).to(
+            cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=self.sigma, npoints=len(target_disks), n_rmax=5).to(
                 self.device)
 
             for relation in self.relations[i]:
@@ -219,6 +243,10 @@ class ASMCDD(torch.nn.Module):
                 weights[relation] = current_weight
                 contributions[relation] = Contribution(self.device, self.nSteps)
 
+            """
+            Initialization step:
+            """
+            start_time = time()
             while n_accepted < output_disks_radii.shape[0]:
                 # print(
                 #     '===> Before Gird Search, n_accepted: {:}/{:}'.format(n_accepted + 1, output_disks_radii.shape[0]))
@@ -308,7 +336,7 @@ class ASMCDD(torch.nn.Module):
 
                 if fails > max_fails:
                     # exceed fail threshold, switch to a parallel grid search
-                    N_I = N_J = 80*int(domainLength)  # 100
+                    N_I = N_J = 80 * int(domainLength)  # 100
                     minError_contrib = defaultdict(Contribution)
                     for relation in self.relations[i]:
                         minError_contrib[relation] = Contribution(self.device, self.nSteps)
@@ -386,16 +414,88 @@ class ASMCDD(torch.nn.Module):
                             current_pcf[relation] += contrib.contribution
                         n_accepted += 1
 
-        self.outputs = []
-        print(len(self.pcf_model))
+            class_done.append(i)  # class i initialization done
+            end_time = time()
+            print('===> Initialization time: {:.4f}'.format(end_time - start_time))
+
+            """
+            Refinement step:
+            """
+            category_i = i
+            current_output = torch.stack(others[category_i], 0)
+            model_refine = Refiner(self.device, self.opt, current_output).to(self.device)
+            optimizer = torch.optim.Adam(model_refine.parameters(), lr=1e-4)
+            n_iter = 10
+            start_time = time()
+            for itr in range(1, n_iter + 1):
+                cur_all_outputs = []
+                if itr == 1:
+                    for k in class_done:
+                        cur_all_outputs.append(torch.stack(others[k], 0))
+                    utils.plot_disks(class_done, cur_all_outputs, self.opt.output_folder + '/init_{:}'.format(i))
+
+                optimizer.zero_grad()
+                out = model_refine()
+                loss = torch.zeros(1).to(self.device)
+                for j in range(len(self.relations[i])):
+                    category_j = self.relations[i][j]
+                    current_output_parent = torch.stack(others[category_j], 0)
+                    # print(current_output.shape, current_output_parent.shape)
+                    same_category = False
+                    if category_i == category_j:
+                        same_category = True
+                        current_output_parent = out.clone()  # parent changed as well
+
+                    cur_pcf_model = self.pcf_model[category_i][category_j]
+                    exemplar_pcf_mean = self.target_pcfs[category_i][category_j][:, 0:2].detach()
+
+                    output_pcf_mean, _, _ = cur_pcf_model(out, current_output_parent, same_category=same_category,
+                                                          dimen=3, use_fnorm=True)
+                    cur_loss = torch.nn.functional.mse_loss(output_pcf_mean[:, 1], exemplar_pcf_mean[:, 1])
+                    # print(cur_loss)
+                    loss += cur_loss
+
+                    save_pcf_prefix = 'init'
+                    if itr == 1:
+                        save_pcf_prefix = 'init'
+                    else:
+                        save_pcf_prefix = 'opt'
+                    if itr == 1 or itr % 10 == 0 or itr == n_iter:
+                        plt.figure(1)
+                        plt.plot(exemplar_pcf_mean.detach().cpu().numpy()[:, 0],
+                                 exemplar_pcf_mean.detach().cpu().numpy()[:, 1], 'r-')
+                        plt.plot(output_pcf_mean.detach().cpu().numpy()[:, 0],
+                                 output_pcf_mean.detach().cpu().numpy()[:, 1], 'g-')
+                        plt.title('Category {:}, Parent {:}'.format(category_i, category_j))
+                        plt.legend(['exemplar', 'output'])
+                        plt.savefig(self.opt.output_folder + '/'+save_pcf_prefix+'_pcf_{:}_{:}'.format(category_i, category_j))
+                        plt.clf()
+
+                loss.backward()
+                optimizer.step()
+                if itr % 10 == 0 or itr == n_iter:
+                    print(itr, loss.item())
+                    out = model_refine().detach()
+                    others[i] = list(torch.unbind(out))
+                    for k in class_done:
+                        cur_all_outputs.append(torch.stack(others[k], 0))
+                    utils.plot_disks(class_done, cur_all_outputs, self.opt.output_folder + '/refined_{:}'.format(i))
+
+            end_time = time()
+            print('Refinement time: {:.4f}'.format(end_time - start_time))
+
+        """
+        Final output:
+        """
         for k in topological_order:
             # if k > 1:
             #     break
             self.outputs.append(torch.stack(others[k], 0))
+
+        self.plot_pretty_pcf(self.target, self.outputs, self.relations)
 
     def forward(self):
         """
         TODO: not implemented
         """
         pass
-

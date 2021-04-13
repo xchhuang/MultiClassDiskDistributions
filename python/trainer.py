@@ -14,6 +14,7 @@ from collections import defaultdict
 import utils
 from refiner import Refiner
 
+
 # np.random.seed(0)
 
 
@@ -45,7 +46,7 @@ class Trainer:
                 same_category = False
                 if category_i == category_j:
                     same_category = True
-                cur_pcf_model = PCF(self.device, nbbins=self.opt.nSteps, sigma=0.25, npoints=len(exemplar_disks),
+                cur_pcf_model = PCF(self.device, nbbins=self.opt.nSteps, sigma=self.opt.sigma, npoints=len(exemplar_disks),
                                     n_rmax=5).to(self.device)
                 exemplar_pcf_mean, exemplar_pcf_min, exemplar_pcf_max = cur_pcf_model(exemplar_disks,
                                                                                       exemplar_parent_disks,
@@ -63,7 +64,7 @@ class Trainer:
                 self.target_pcfs[category_i][category_j] = torch.cat([exemplar_pcf_mean, exemplar_pcf_min.unsqueeze(1),
                                                                       exemplar_pcf_max.unsqueeze(1)], 1)
 
-                pretty_pcf_model = PrettyPCF(self.device, nbbins=self.opt.nSteps, sigma=0.25,
+                pretty_pcf_model = PrettyPCF(self.device, nbbins=self.opt.nSteps, sigma=self.opt.sigma,
                                              npoints=len(exemplar_disks), n_rmax=5).to(self.device)
 
                 exemplar_pcf_mean = pretty_pcf_model(exemplar_disks, exemplar_parent_disks, same_category, dimen=3,
@@ -79,7 +80,7 @@ class Trainer:
                          'r-')
                 plt.plot(output_pcf_mean[:, 0].detach().cpu().numpy(), output_pcf_mean[:, 1].detach().cpu().numpy(),
                          'g-')
-
+                plt.legend(['exemplar', 'output'])
                 plt.savefig(
                     self.opt.output_folder + '/{:}_pcf_{:}_{:}'.format(self.opt.scene_name, category_i, category_j))
                 plt.clf()
@@ -130,7 +131,7 @@ class Trainer:
         for i in range(num_classes):
             category_i = i
             exemplar_disks = exemplar[category_i]
-            model_refine = Refiner(self.device, self.opt, output, category_i).to(self.device)
+            model_refine = Refiner(self.device, self.opt, output[category_i]).to(self.device)
             optimizer = torch.optim.Adam(model_refine.parameters(), lr=1e-3)
 
             for itr in tqdm(range(n_iter)):
@@ -152,11 +153,9 @@ class Trainer:
                     cur_pcf_model = self.pcf_model[category_i][category_j]
                     exemplar_pcf_mean = self.target_pcfs[category_i][category_j][:, 0:2].detach()
 
-                    output_pcf_mean = cur_pcf_model(output_disks,
-                                                                                    output_parent_disks,
-                                                                                    same_category=same_category,
-                                                                                    dimen=3,
-                                                                                    use_fnorm=True)
+                    output_pcf_mean = cur_pcf_model(output_disks, output_parent_disks, same_category=same_category,
+                                                    dimen=3, use_fnorm=True)
+
                     cur_loss = torch.nn.functional.mse_loss(output_pcf_mean[:, 1], exemplar_pcf_mean[:, 1])
                     # if category_i == category_j == 0:
                     #     w = 3e-11
