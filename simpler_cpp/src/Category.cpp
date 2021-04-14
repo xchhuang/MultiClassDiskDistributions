@@ -187,6 +187,7 @@ void Category::initialize(float domainLength, float e_delta){
 
         // float rx = rand_0to1(rand_gen);
         // float ry = rand_0to1(rand_gen);
+        // TODO: newly added to make sure the disk are fully inside the domain
         float min_xy = 0.1;
         if (id == 0) {
             rx = min_xy + rx * (domainLength - min_xy * 2);
