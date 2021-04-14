@@ -23,6 +23,8 @@ parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.tx
 parser.add_argument('--refine', action='store_true')
 parser.add_argument('--nSteps', type=int, default=50, help='number of bins for computing PCF')
 parser.add_argument('--sigma', type=float, default=0.25, help='smoothness of Gaussian kernel sigma for computing PCF')
+parser.add_argument('--domainLength', type=int, default=1, help='domain size: 1 for same domain and n for n times larger domain')
+
 opt = parser.parse_args()
 
 

@@ -55,10 +55,12 @@ class ASMCDD(torch.nn.Module):
 
         self.plot_pretty_pcf(self.target, self.target, self.relations)
 
-        self.initialize(domainLength=1)
+        self.initialize(domainLength=opt.domainLength)
 
 
-        # utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
+        utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
+        self.plot_pretty_pcf(self.target, self.outputs, self.relations)
+
         # utils.plot_disks(self.topological_order, self.outputs, self.opt.output_folder + '/output')
 
     def computeTarget(self):
@@ -177,7 +179,8 @@ class ASMCDD(torch.nn.Module):
         print('topological_order:', topological_order)
 
         n_factor = domainLength * domainLength
-        diskfact = 1 / domainLength
+        # diskfact = 1 / domainLength
+        diskfact = 1
         n_repeat = math.ceil(n_factor)
         # print(n_factor, diskfact, n_repeat)
         # disks = []
@@ -219,6 +222,7 @@ class ASMCDD(torch.nn.Module):
             # idx = torch.randperm(output_disks_radii.shape[0])
             # output_disks_radii = output_disks_radii[idx].view(output_disks_radii.size())
             output_disks_radii, _ = torch.sort(output_disks_radii, descending=True)
+            output_disks_radii /= domainLength
             # print(i, output_disks_radii.shape)
 
             # init
@@ -259,8 +263,8 @@ class ASMCDD(torch.nn.Module):
                 # if i == 0:
                 #     print(current_radius, (domainLength - current_radius))
                 # else:
-                rx = np.random.rand() * domainLength
-                ry = np.random.rand() * domainLength
+                rx = np.random.rand()  # * domainLength
+                ry = np.random.rand()  # * domainLength
                 # if i == 0:
                 #     min_xy = 0.09
                 #     rx = min_xy + np.random.rand() * (domainLength - min_xy * 2)  # my version
@@ -352,8 +356,8 @@ class ASMCDD(torch.nn.Module):
                         currentError = 0
                         for ni in range(1, N_I):
                             for nj in range(1, N_J):
-                                gx = domainLength / N_I * ni
-                                gy = domainLength / N_J * nj
+                                gx = 1 / N_I * ni
+                                gy = 1 / N_J * nj
                                 cell_test = [gx, gy, output_disks_radii[n_accepted]]
                                 # if min_x > gx > max_x or min_y > gy > max_y:
                                 #     continue
@@ -398,10 +402,10 @@ class ASMCDD(torch.nn.Module):
                                             relation].contribution.clone()
 
                         # finally outside grid search, then add random x, y offsets within a grid
-                        x_offset = (np.random.rand() * domainLength - domainLength / 2) / (N_I * 10)
-                        y_offset = (np.random.rand() * domainLength - domainLength / 2) / (N_J * 10)
-                        cell_test = [domainLength / N_I * minError_i + x_offset,
-                                     domainLength / N_J * minError_j + y_offset,
+                        x_offset = (np.random.rand() * 1 - 1 / 2) / (N_I * 10)
+                        y_offset = (np.random.rand() * 1 - 1 / 2) / (N_J * 10)
+                        cell_test = [1 / N_I * minError_i + x_offset,
+                                     1 / N_J * minError_j + y_offset,
                                      output_disks_radii[n_accepted]]
                         cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
                         others[i].append(cell_test)
@@ -446,11 +450,14 @@ class ASMCDD(torch.nn.Module):
                         same_category = True
                         current_output_parent = out.clone()  # parent changed as well
 
-                    cur_pcf_model = self.pcf_model[category_i][category_j]
+                    # cur_pcf_model = self.pcf_model[category_i][category_j]
                     exemplar_pcf_mean = self.target_pcfs[category_i][category_j][:, 0:2].detach()
 
-                    output_pcf_mean, _, _ = cur_pcf_model(out, current_output_parent, same_category=same_category,
-                                                          dimen=3, use_fnorm=True)
+                    cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=self.sigma, npoints=len(others[i]),
+                                        n_rmax=5).to(self.device)
+
+                    output_pcf_mean, _, _ = cur_pcf_model(out*1, current_output_parent*1, same_category=same_category,
+                                                          dimen=3, use_fnorm=True, domainLength=domainLength)
                     cur_loss = torch.nn.functional.mse_loss(output_pcf_mean[:, 1], exemplar_pcf_mean[:, 1])
                     # print(cur_loss)
                     loss += cur_loss
@@ -492,7 +499,7 @@ class ASMCDD(torch.nn.Module):
             #     break
             self.outputs.append(torch.stack(others[k], 0))
 
-        self.plot_pretty_pcf(self.target, self.outputs, self.relations)
+        # self.plot_pretty_pcf(self.target, self.outputs, self.relations)
 
     def forward(self):
         """
