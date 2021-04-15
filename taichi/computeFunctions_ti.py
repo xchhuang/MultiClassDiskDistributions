@@ -254,20 +254,22 @@ class PCF_ti:
             for k in range(self.nbbins):
                 self.weights_ti[k] = self.perimeter_weight_ti(pi[0], pi[1], self.rs_ti[k])
             for j in range(Nb):
-                # if self.same_category and i == j:
-                #     continue
-                pj = self.disks_parent_ti[j]
-                d = self.diskDistance(pi, pj)
-                break
-                # for k in range(self.nbbins):
-                #     r = self.rs_ti[k] / self.rmax
-                #     val = self.gaussianKernel(r - d)
-                #     self.pcf_mean[k][1] += val * self.weights_ti[k] / self.area_ti[k] / (Na * Nb)
-                #     self.pcf_mean[k][0] = r
-                #     if self.pcf_min[k] > self.pcf_mean[k][1]:
-                #         self.pcf_min[k] = self.pcf_mean[k][1]
-                #     if self.pcf_max[k] < self.pcf_mean[k][1]:
-                #         self.pcf_max[k] = self.pcf_mean[k][1]
+                skip = False
+                if self.same_category and i == j:
+                    skip = True
+                if not skip:
+                    pj = self.disks_parent_ti[j]
+                    d = self.diskDistance(pi, pj)
+
+                    for k in range(self.nbbins):
+                        r = self.rs_ti[k] / self.rmax
+                        val = self.gaussianKernel(r - d)
+                        self.pcf_mean[k][1] += val * self.weights_ti[k] / self.area_ti[k] / (Na * Nb)
+                        self.pcf_mean[k][0] = r
+                        if self.pcf_min[k] > self.pcf_mean[k][1]:
+                            self.pcf_min[k] = self.pcf_mean[k][1]
+                        if self.pcf_max[k] < self.pcf_mean[k][1]:
+                            self.pcf_max[k] = self.pcf_mean[k][1]
 
 
 
