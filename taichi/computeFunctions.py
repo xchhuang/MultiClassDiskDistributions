@@ -255,6 +255,7 @@ class PCF(torch.nn.Module):
     # def forward(self, pts, c, t, dimen=3, use_fnorm=True, mean_pcf=False):
     def forward(self, disks_a, disks_b, same_category, dimen=3, use_fnorm=True, domainLength=1):
         # print(disks_a.shape, disks_b.shape, same_category)
+
         pcf = torch.zeros(self.nbbins, 2).float().to(self.device)
         # hist = torch.zeros(self.nbbins)
         pcf_lower = torch.ones(self.nbbins).float().to(self.device) * np.inf  # init with very large number
@@ -284,6 +285,7 @@ class PCF(torch.nn.Module):
 
             pts_w = pi[0:1].view(1, -1)  # same
             weights = self.perimeter_weight(pts_w[:, 0], pts_w[:, 1], 1/domainLength)
+
             density = torch.sum(val, 0)
             # print(density)
             density = density * weights / self.area  # consistent with cpp results until now

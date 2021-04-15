@@ -53,13 +53,10 @@ class ASMCDD(torch.nn.Module):
         self.computeTarget()
         self.outputs = []
 
-        self.plot_pretty_pcf(self.target, self.target, self.relations)
-
-        self.initialize(domainLength=opt.domainLength)
-
-
-        utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
-        self.plot_pretty_pcf(self.target, self.outputs, self.relations)
+        # self.plot_pretty_pcf(self.target, self.target, self.relations)
+        # self.initialize(domainLength=opt.domainLength)
+        # utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
+        # self.plot_pretty_pcf(self.target, self.outputs, self.relations)
 
         # utils.plot_disks(self.topological_order, self.outputs, self.opt.output_folder + '/output')
 

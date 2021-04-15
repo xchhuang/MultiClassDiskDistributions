@@ -271,7 +271,7 @@ class PCF(torch.nn.Module):
 
             if use_fnorm:
                 d = utils.diskDistance(pi, pj, self.rmax)
-
+                # print(i, d)
                 val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins))
                 # print(self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins))
                 # print((self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins)).shape)
@@ -285,7 +285,7 @@ class PCF(torch.nn.Module):
             pts_w = pi[0:1].view(1, -1)  # same
             weights = self.perimeter_weight(pts_w[:, 0], pts_w[:, 1], 1/domainLength)
             density = torch.sum(val, 0)
-            # print(density)
+
             density = density * weights / self.area  # consistent with cpp results until now
             # print(weights)
             density = density / disks_b.size(0)

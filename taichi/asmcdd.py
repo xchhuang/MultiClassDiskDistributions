@@ -13,9 +13,9 @@ from computeFunctions_ti import PCF_ti
 from collections import defaultdict
 # from utils import Contribution
 # from computeFunctions import compute_contribution, compute_error
-# import utils
+import utils
 # import copy
-from graphlib import TopologicalSorter
+# from graphlib import TopologicalSorter
 # from refiner import Refiner
 import taichi as ti
 
@@ -83,7 +83,7 @@ class ASMCDD:
         print('Time of computing target PCFs(taichi): {:.4f}'.format(end - start))
         # self.plot_pretty_pcf(self.target, self.target, self.relations)
         #
-        # self.initialize(domainLength=opt.domainLength)
+        self.initialize(domainLength=opt.domainLength)
         #
         #
         # utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
@@ -151,7 +151,7 @@ class ASMCDD:
 
                 cur_pcf_mean = self.pcf_model_ti[i][j].pcf_mean.to_numpy()
                 plt.plot(cur_pcf_mean[:, 0], cur_pcf_mean[:, 1])
-                print(cur_pcf_mean[:, 1])
+                # print(cur_pcf_mean[:, 1])
                 plt.savefig(
                     self.opt.output_folder + '/{:}_pcf_{:}_{:}'.format(self.opt.scene_name, i, j))
                 plt.clf()
@@ -212,10 +212,10 @@ class ASMCDD:
 
     def initialize(self, domainLength=1, e_delta=1e-4):
         # first find the topological oder
-        graph, topological_order = utils.topologicalSort(len(self.target), self.relations)
+        graph, topological_order = utils.topologicalSort(len(self.categories.keys()), self.relations)
         self.topological_order = topological_order
         print('topological_order:', topological_order)
-
+        return
         n_factor = domainLength * domainLength
         # diskfact = 1 / domainLength
         diskfact = 1

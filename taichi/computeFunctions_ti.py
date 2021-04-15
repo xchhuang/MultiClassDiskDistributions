@@ -101,6 +101,7 @@ class PCF_ti:
         self.rs_ti = ti.field(dtype=ti.f32, shape=nbbins)
         self.area_ti = ti.field(dtype=ti.f32, shape=nbbins)
         self.weights_ti = ti.field(dtype=ti.f32, shape=nbbins)
+        self.density = ti.field(dtype=ti.f32, shape=nbbins)
 
         self.domainLength = domainLength
 
@@ -137,6 +138,7 @@ class PCF_ti:
         self.disks_parent_ti.from_numpy(np.array(self.disks_parent))
         self.pcf_min.from_numpy(np.ones(self.nbbins) * np.inf)
         self.pcf_max.from_numpy(np.ones(self.nbbins) * -np.inf)
+        self.weights_ti.from_numpy(np.zeros(self.nbbins))
         self.weights_ti.from_numpy(np.zeros(self.nbbins))
         self.area_ti.from_numpy(np.array(self.area))
         self.rs_ti.from_numpy(np.array(self.rs))
@@ -192,8 +194,10 @@ class PCF_ti:
 
     @ti.func
     def perimeter_weight_helper(self, dx, dy, r):
-        alpha = ti.acos(dx / r)
-        angle = min(alpha, ti.atan2(dy, dx)) + min(alpha, ti.atan2((1 - dy), dx))
+        angle = 0.0
+        if dx < r:
+            alpha = ti.acos(dx / r)
+            angle = min(alpha, ti.atan2(dy, dx)) + min(alpha, ti.atan2((1 - dy), dx))
         return angle
 
     @ti.func
@@ -207,19 +211,19 @@ class PCF_ti:
         full_angle = self.clamp(full_angle, 0, 1)
         w = 0.0
         if full_angle > 0:
-            w = 1 / full_angle
+            w = 1.0 / full_angle
         return w
 
     @ti.func
     def euclideanDistance(self, pi, pj):
         diff = pi - pj
-        dist = ti.sqrt(diff[0]*diff[0] + diff[1]*diff[1])
+        dist = ti.sqrt(diff[0] * diff[0] + diff[1] * diff[1])
         return dist
 
     @staticmethod
     @ti.func
     def clamp(x, lower, upper):
-        return max(0, min(upper, x))
+        return max(lower, min(upper, x))
 
     @staticmethod
     @ti.func
@@ -228,7 +232,7 @@ class PCF_ti:
 
     @ti.func
     def diskDistance(self, pi, pj):
-        d = self.euclideanDistance(pi, pj)
+        d = self.euclideanDistance(pi, pj) / self.rmax
         r1 = max(pi[2], pj[2]) / self.rmax
         r2 = min(pi[2], pj[2]) / self.rmax
         extent = max(d + r1 + r2, 2 * r1)
@@ -241,44 +245,43 @@ class PCF_ti:
             f = (f - 4 * r1 + 7 * r2) / (3 * r2)
         else:
             f = f - 4 * r1 - 2 * r2 + 3
-        if self.isnan(f):
-            print(f)
+        # if self.isnan(f):
+        #     print(f)
         return f
 
     @ti.kernel
     def forward(self):
         Na = self.disks_ti.shape[0]
         Nb = self.disks_parent_ti.shape[0]
-        for i in range(Na):
-            pi = self.disks_ti[i]
+        for _ in range(1):      # TODO: force serialized
+            for i in range(Na):
+                pi = self.disks_ti[i]
+                for k in range(self.nbbins):
+                    self.weights_ti[k] = self.perimeter_weight_ti(pi[0], pi[1], self.rs_ti[k])
+                    self.density[k] = 0.0
+                for j in range(Nb):
+                    skip = False
+                    if self.same_category and i == j:
+                        skip = True
+                    if not skip:
+                        pj = self.disks_parent_ti[j]
+                        d = self.diskDistance(pi, pj)
+                        for k in range(self.nbbins):
+                            r = self.rs_ti[k] / self.rmax
+                            val = self.gaussianKernel(r - d)
+                            self.density[k] += val * self.weights_ti[k] / self.area_ti[k] / Nb
+
+                for k in range(self.nbbins):
+                    self.pcf_mean[k] += self.density[k]  # / Na
+                    # self.pcf_mean[k][0] = self.rs_ti[k] / self.rmax
+                    if self.pcf_min[k] > self.pcf_mean[k][1]:
+                        self.pcf_min[k] = self.pcf_mean[k][1]
+                    if self.pcf_max[k] < self.pcf_mean[k][1]:
+                        self.pcf_max[k] = self.pcf_mean[k][1]
+
             for k in range(self.nbbins):
-                self.weights_ti[k] = self.perimeter_weight_ti(pi[0], pi[1], self.rs_ti[k])
-            for j in range(Nb):
-                skip = False
-                if self.same_category and i == j:
-                    skip = True
-                if not skip:
-                    pj = self.disks_parent_ti[j]
-                    d = self.diskDistance(pi, pj)
-
-                    for k in range(self.nbbins):
-                        r = self.rs_ti[k] / self.rmax
-                        val = self.gaussianKernel(r - d)
-                        self.pcf_mean[k][1] += val * self.weights_ti[k] / self.area_ti[k] / (Na * Nb)
-                        self.pcf_mean[k][0] = r
-                        if self.pcf_min[k] > self.pcf_mean[k][1]:
-                            self.pcf_min[k] = self.pcf_mean[k][1]
-                        if self.pcf_max[k] < self.pcf_mean[k][1]:
-                            self.pcf_max[k] = self.pcf_mean[k][1]
-
-
-
-
-
-
-
-
-
+                self.pcf_mean[k][0] = self.rs_ti[k] / self.rmax
+                self.pcf_mean[k][1] /= Na
 
 
 
