@@ -61,6 +61,7 @@ class ASMCDD:
         self.pcf_model_ti = defaultdict(dict)
         self.target_pcfs_ti = defaultdict(dict)
 
+        # define taichi fields in PCF_ti
         for i in categories.keys():
             for j in self.relations[i]:
                 Nk = len(self.categories[i])
@@ -71,6 +72,7 @@ class ASMCDD:
                                                  same_category=same_category, nbbins=self.nSteps, sigma=self.sigma,
                                                  npoints=Nk, n_rmax=5, domainLength=self.opt.domainLength)
 
+        # initialize taichi fields inside pcf_model_ti
         for i in categories.keys():
             for j in self.relations[i]:
                 self.pcf_model_ti[i][j].initialize()
@@ -141,12 +143,15 @@ class ASMCDD:
                 #                     n_rmax=5).to(self.device)
                 # # print('Target Info, id: {:}, parent: {:}, rmax: {:.4f}'.format(category_i, category_j,
                 # #                                                                cur_pcf_model.rmax))
-                self.pcf_model_ti[i][j].forward_target()
+                self.pcf_model_ti[i][j].forward()
                 # # self.pcf_model[category_i][category_j] = cur_pcf_model
                 # # self.target_pcfs[category_i][category_j] = torch.cat([cur_pcf_mean, cur_pcf_min.unsqueeze(1),
                 # #                                                       cur_pcf_max.unsqueeze(1)], 1)
                 #
-                # plt.plot(cur_pcf_mean[:, 0].detach().cpu().numpy(), cur_pcf_mean[:, 1].detach().cpu().numpy())
+
+                cur_pcf_mean = self.pcf_model_ti[i][j].pcf_mean.to_numpy()
+                plt.plot(cur_pcf_mean[:, 0], cur_pcf_mean[:, 1])
+                print(cur_pcf_mean[:, 1])
                 plt.savefig(
                     self.opt.output_folder + '/{:}_pcf_{:}_{:}'.format(self.opt.scene_name, i, j))
                 plt.clf()
