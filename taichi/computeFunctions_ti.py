@@ -90,7 +90,11 @@ class PCF_ti:
         super(PCF_ti, self).__init__()
 
         n_factor = domainLength * domainLength
+        npoints = int(npoints * domainLength)
         self.n_repeat = math.ceil(n_factor)
+
+        # self.count_disks = ti.field(dtype=ti.i32, shape=())    # TODO: counter for current number of disks, for output disks only instead of targets
+
         # print('n_repeat:', n_repeat)
         self.disks = disks
         self.disks_parent = disks_parent
@@ -140,6 +144,7 @@ class PCF_ti:
 
     def initialize(self):
         # print('initialze')
+        # self.count_disks[None] = 0
         self.disks_ti.from_numpy(np.array(self.disks).repeat(self.n_repeat, 0))
         self.disks_parent_ti.from_numpy(np.array(self.disks_parent).repeat(self.n_repeat, 0))
         self.pcf_min.from_numpy(np.ones(self.nbbins) * np.inf)

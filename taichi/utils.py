@@ -3,13 +3,21 @@ import torch
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from graphlib import TopologicalSorter
+import taichi as ti
 
 
+@ti.data_oriented
 class Contribution:
-    def __init__(self, device, nbbins):
-        self.weights = torch.zeros(nbbins).float().to(device)
-        self.contribution = torch.zeros(nbbins).float().to(device)
-        self.pcf = torch.zeros(nbbins).float().to(device)
+    def __init__(self, nbbins):
+        self.nbbins = nbbins
+        self.weights = ti.field(dtype=ti.f32, shape=nbbins)
+        self.contribution = ti.field(dtype=ti.f32, shape=nbbins)
+        self.pcf = ti.field(dtype=ti.f32, shape=nbbins)
+
+    def initialize(self):
+        self.weights.from_numpy(np.zeros(self.nbbins))
+        self.contribution.from_numpy(np.zeros(self.nbbins))
+        self.pcf.from_numpy(np.zeros(self.nbbins))
 
 
 def diskDistance(a, b, rmax):
