@@ -89,10 +89,14 @@ class PCF_ti:
                  domainLength=1):
         super(PCF_ti, self).__init__()
 
+        n_factor = domainLength * domainLength
+        self.n_repeat = math.ceil(n_factor)
+        # print('n_repeat:', n_repeat)
         self.disks = disks
         self.disks_parent = disks_parent
-        self.disks_ti = ti.Vector.field(3, dtype=ti.f32, shape=len(disks))
-        self.disks_parent_ti = ti.Vector.field(3, dtype=ti.f32, shape=len(disks_parent))
+
+        self.disks_ti = ti.Vector.field(3, dtype=ti.f32, shape=len(disks)*self.n_repeat)
+        self.disks_parent_ti = ti.Vector.field(3, dtype=ti.f32, shape=len(disks_parent)*self.n_repeat)
 
         self.same_category = same_category
         self.pcf_mean = ti.Vector.field(2, dtype=ti.f32, shape=nbbins)
@@ -104,6 +108,8 @@ class PCF_ti:
         self.density = ti.field(dtype=ti.f32, shape=nbbins)
 
         self.domainLength = domainLength
+        self.count_a = 0
+        self.count_b = 0
 
         d = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * npoints))
         self.rmax = d
@@ -133,9 +139,9 @@ class PCF_ti:
         self.gf = 1.0 / (np.sqrt(math.pi) * self.sigma)
 
     def initialize(self):
-        print('initialze')
-        self.disks_ti.from_numpy(np.array(self.disks))
-        self.disks_parent_ti.from_numpy(np.array(self.disks_parent))
+        # print('initialze')
+        self.disks_ti.from_numpy(np.array(self.disks).repeat(self.n_repeat, 0))
+        self.disks_parent_ti.from_numpy(np.array(self.disks_parent).repeat(self.n_repeat, 0))
         self.pcf_min.from_numpy(np.ones(self.nbbins) * np.inf)
         self.pcf_max.from_numpy(np.ones(self.nbbins) * -np.inf)
         self.weights_ti.from_numpy(np.zeros(self.nbbins))

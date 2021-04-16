@@ -58,24 +58,39 @@ class ASMCDD:
         # n_classes = len(self.target)
         # self.pcf_model = defaultdict(dict)
         # self.target_pcfs = defaultdict(dict)
-        self.pcf_model_ti = defaultdict(dict)
-        self.target_pcfs_ti = defaultdict(dict)
+        self.target_pcf_model = defaultdict(dict)
+        self.output_pcf_model = defaultdict(dict)
+        self.output_disks_radii = defaultdict(list)
+
+        self.domainLength = opt.domainLength
+        self.n_factor = self.domainLength * self.domainLength
+        diskfact = 1
+        self.n_repeat = math.ceil(self.n_factor)
 
         # define taichi fields in PCF_ti
         for i in categories.keys():
+            self.output_disks_radii[i] = ti.field(dtype=ti.f32, shape=len(self.categories[i])*self.n_repeat)
             for j in self.relations[i]:
                 Nk = len(self.categories[i])
                 same_category = False
                 if i == j:
                     same_category = True
-                self.pcf_model_ti[i][j] = PCF_ti(disks=self.categories[i], disks_parent=self.categories[j],
+                self.target_pcf_model[i][j] = PCF_ti(disks=self.categories[i], disks_parent=self.categories[j],
                                                  same_category=same_category, nbbins=self.nSteps, sigma=self.sigma,
-                                                 npoints=Nk, n_rmax=5, domainLength=self.opt.domainLength)
+                                                 npoints=Nk, n_rmax=5, domainLength=1)
+                self.output_pcf_model[i][j] = PCF_ti(disks=self.categories[i], disks_parent=self.categories[j],
+                                                     same_category=same_category, nbbins=self.nSteps, sigma=self.sigma,
+                                                     npoints=Nk, n_rmax=5, domainLength=self.opt.domainLength)
 
         # initialize taichi fields inside pcf_model_ti
         for i in categories.keys():
+            cur_tar_disks = np.array(self.categories[i])
+            radii = cur_tar_disks[:, -1].repeat(self.n_repeat) / self.domainLength
+            radii = np.sort(radii)[::-1]
+            self.output_disks_radii[i].from_numpy(radii)
             for j in self.relations[i]:
-                self.pcf_model_ti[i][j].initialize()
+                self.target_pcf_model[i][j].initialize()
+                self.output_pcf_model[i][j].initialize()
 
         start = time()
         self.computeTarget_ti()
@@ -134,22 +149,12 @@ class ASMCDD:
         for i in self.categories.keys():
             # target_disks = self.target[i]
             for j in self.relations[i]:
-                # plt.figure(1)
-                # parent_disks = self.target[j]
-                # same_category = False
-                # if i == j:
-                #     same_category = True
-                # cur_pcf_model = PCF_ti(self.device, nbbins=self.nSteps, sigma=self.sigma, npoints=len(target_disks),
-                #                     n_rmax=5).to(self.device)
-                # # print('Target Info, id: {:}, parent: {:}, rmax: {:.4f}'.format(category_i, category_j,
-                # #                                                                cur_pcf_model.rmax))
-                self.pcf_model_ti[i][j].forward()
-                # # self.pcf_model[category_i][category_j] = cur_pcf_model
-                # # self.target_pcfs[category_i][category_j] = torch.cat([cur_pcf_mean, cur_pcf_min.unsqueeze(1),
-                # #                                                       cur_pcf_max.unsqueeze(1)], 1)
-                #
+                self.target_pcf_model[i][j].forward()
+                # self.output_pcf_model[i][j].forward()
 
-                cur_pcf_mean = self.pcf_model_ti[i][j].pcf_mean.to_numpy()
+                cur_pcf_mean = self.target_pcf_model[i][j].pcf_mean.to_numpy()
+                # cur_pcf_mean2 = self.output_pcf_model[i][j].pcf_mean.to_numpy()
+
                 plt.plot(cur_pcf_mean[:, 0], cur_pcf_mean[:, 1])
                 # print(cur_pcf_mean[:, 1])
                 plt.savefig(
@@ -172,24 +177,6 @@ class ASMCDD:
                 same_category = False
                 if category_i == category_j:
                     same_category = True
-                # cur_pcf_model = PCF(self.device, nbbins=self.opt.nSteps, sigma=0.25, npoints=len(exemplar_disks),
-                #                     n_rmax=5).to(self.device)
-                # exemplar_pcf_mean, exemplar_pcf_min, exemplar_pcf_max = cur_pcf_model(exemplar_disks,
-                #                                                                       exemplar_parent_disks,
-                #                                                                       same_category=same_category,
-                #                                                                       dimen=3,
-                #                                                                       use_fnorm=True)
-                #
-                # output_pcf_mean, output_pcf_min, output_pcf_max = cur_pcf_model(output_disks,
-                #                                                                 output_parent_disks,
-                #                                                                 same_category=same_category,
-                #                                                                 dimen=3,
-                #                                                                 use_fnorm=True)
-                #
-                # self.pcf_model[category_i][category_j] = cur_pcf_model
-                # self.target_pcfs[category_i][category_j] = torch.cat([exemplar_pcf_mean, exemplar_pcf_min.unsqueeze(1),
-                #                                                       exemplar_pcf_max.unsqueeze(1)], 1)
-                # print('pretty:', len(exemplar_disks))
                 pretty_pcf_model = PrettyPCF(self.device, nbbins=self.opt.nSteps, sigma=0.25,
                                              npoints=len(exemplar_disks), n_rmax=5).to(self.device)
 
@@ -215,54 +202,25 @@ class ASMCDD:
         graph, topological_order = utils.topologicalSort(len(self.categories.keys()), self.relations)
         self.topological_order = topological_order
         print('topological_order:', topological_order)
-        return
-        n_factor = domainLength * domainLength
-        # diskfact = 1 / domainLength
-        diskfact = 1
-        n_repeat = math.ceil(n_factor)
-        # print(n_factor, diskfact, n_repeat)
-        # disks = []
+
         others = defaultdict(list)  # existing generated disks
         for i in topological_order:
             others[i] = []
         print(topological_order)
 
-        # TODO: predefined id 0 for debugging
-        # predefined_id_pts = defaultdict(list)
-        # for i in range(2):
-        #     pts = []
-        #     with open('../simpler_cpp/outputs/debug_forest_{:}.txt'.format(i)) as f:
-        #         lines = f.readlines()
-        #         for line in lines:
-        #             line = line.strip().split(' ')
-        #             l = [float(x) for x in line]
-        #             pts.append(l)
-        #     predefined_id_pts[i] = pts
-        class_done = []
-
         for i in topological_order:
-            # if i > 1:
-            #     break
+
             # TODO: those params should be defined inside the loop
             e_0 = 0
             max_fails = 1000
             fails = 0
             n_accepted = 0
 
-            target_disks = self.categories[i]
-            target_disks = torch.from_numpy(np.array(target_disks)).float().to(self.device)
-            min_x, max_x = target_disks[:, 0].min().item(), target_disks[:, 0].max().item()
-            min_y, max_y = target_disks[:, 1].min().item(), target_disks[:, 1].max().item()
-            # print(min_x, max_x, min_y, max_y)
-            # print(target_disks.shape)
-            output_disks_radii = torch.zeros(target_disks.shape[0] * n_repeat).float().to(self.device)
-            output_disks_radii = target_disks[:, -1].repeat(n_repeat)
-            # idx = torch.randperm(output_disks_radii.shape[0])
-            # output_disks_radii = output_disks_radii[idx].view(output_disks_radii.size())
-            output_disks_radii, _ = torch.sort(output_disks_radii, descending=True)
-            output_disks_radii /= domainLength
-            # print(i, output_disks_radii.shape)
-
+            # target_disks = self.categories[i]
+            target_disks = self.target_pcf_model[i][i].disks_ti
+            output_radii = self.output_disks_radii[i]
+            print(target_disks.shape, output_radii)
+            return
             # init
             # print(i, self.relations[i])
             current_pcf = defaultdict(list)
