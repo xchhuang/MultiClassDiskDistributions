@@ -201,5 +201,4 @@ def getSamplesFromImage(im):
     # plt.show()
     # print(sample_spheres_center.shape, sample_spheres_elem.shape)
     sample_spheres = np.concatenate([sample_spheres_center, sample_spheres_elem], 0)
-    # print(sample_spheres.shape)
-    return coord
+    return sample_spheres

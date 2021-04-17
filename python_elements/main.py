@@ -48,12 +48,13 @@ def load_elements(categories):
     for k in categories.keys():     # assume number of classes is equal to number of elements type
         im = elements[k]
         im = im.resize((img_res, img_res), resample=Image.LANCZOS)
-        im = np.asarray(im)
+        im = np.asarray(im)     # [W, H, 3or4]
         sample_spheres = utils.getSamplesFromImage(im)
+        # print(sample_spheres.shape)
         for e in categories[k]:
             cur_sample_sphere = sample_spheres.copy()
             categories_elem[k].append(cur_sample_sphere)
-    # print(categories_elem)
+    print(len(categories_elem[0]), categories_elem[0][0].shape)
 
 def main():
     config_filename = opt.config_filename
