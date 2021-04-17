@@ -11,6 +11,11 @@ import glob
 from collections import defaultdict
 from asmcdd import ASMCDD
 from trainer import Trainer
+import utils
+from PIL import Image
+import sys
+sys.path.append('../')
+
 
 # device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 device = torch.device('cpu')    # seems cpu is faster
@@ -27,18 +32,28 @@ parser.add_argument('--domainLength', type=int, default=1, help='domain size: 1 
 
 opt = parser.parse_args()
 
+filenames = ['bird', 'bunny', 'dog']
 
 
-#
-# def plot_pts(title, pts):
-#     plt.figure(1)
-#     ax = plt.gca()
-#     ax.cla()
-#     plt.scatter(pts[:, 0], pts[:, 1], s=5, c='r')
-#     ax.set_aspect('equal')
-#     plt.savefig(opt.outd + '/' + title)
-#     plt.clf()
-
+def load_elements(categories):
+    img_res = 512
+    path_prefix = './elements'
+    elements = []
+    for filename in filenames:
+        im = Image.open(path_prefix+'/'+filename+'.png').convert('RGBA')
+        elements.append(im)
+    # print(len(elements))
+    # categories_img = []
+    categories_elem = defaultdict(list)
+    for k in categories.keys():     # assume number of classes is equal to number of elements type
+        im = elements[k]
+        im = im.resize((img_res, img_res), resample=Image.LANCZOS)
+        im = np.asarray(im)
+        sample_spheres = utils.getSamplesFromImage(im)
+        for e in categories[k]:
+            cur_sample_sphere = sample_spheres.copy()
+            categories_elem[k].append(cur_sample_sphere)
+    # print(categories_elem)
 
 def main():
     config_filename = opt.config_filename
@@ -51,7 +66,7 @@ def main():
     opt.output_folder = output_folder
     categories = defaultdict(list)
     relations = defaultdict(list)
-
+    radii = []
     with open(config_filename) as f:
         lines = f.readlines()
         example_filename = lines[0].strip()
@@ -79,6 +94,7 @@ def main():
                 x, y, r = line[1], line[2], line[3]
                 # print(idx)
                 categories[idx].append([x/10000.0, y/10000.0, r/10000.0])
+                radii.append(r/10000.0)
 
         for k in range(num_classes):
             relations[k].append(k)
@@ -91,7 +107,9 @@ def main():
         for k in categories.keys():
             print('#Disk of class {:} {:}, their parents {:}'.format(k, len(categories[k]), relations[k]))
 
-        Trainer(device, opt, categories, relations)
+        
+        # Trainer(device, opt, categories, relations)
+        load_elements(categories)
 
 if __name__ == "__main__":
     main()

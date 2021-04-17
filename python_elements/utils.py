@@ -3,6 +3,13 @@ import torch
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from graphlib import TopologicalSorter
+import sys
+
+# newly added
+sys.path.append('../')
+from common.fps import farthest_point_sample
+from sklearn.cluster import KMeans
+from common import smallestenclosingcircle
 
 
 class Contribution:
@@ -112,3 +119,87 @@ def topologicalSort(num_classes, relations):
 def toroidalWrapAround(points, domain_size=1):
     points = torch.where(torch.gt(points, domain_size), points - torch.floor(points), points)
     return torch.where(torch.lt(points, 0), points + torch.ceil(torch.abs(points)), points)
+
+
+def getSamplesFromImage_helper(coord, samples_per_element):
+    coord_sample1 = farthest_point_sample(coord, npoint=1024)
+    if samples_per_element > 1:
+        coord_sample2 = farthest_point_sample(coord_sample1, npoint=samples_per_element)
+    else:
+        coord_sample2 = np.expand_dims(np.mean(coord_sample1, 0), 0)
+    # sample_center = np.mean(coord_sample2, 0)
+    # plt.figure(1)
+    # plt.scatter(coord_sample1[:, 0], coord_sample1[:, 1], c='r', s=2)
+    # plt.scatter(coord_sample2[:, 0], coord_sample2[:, 1], c='b', s=20)
+    # plt.show()
+
+    kmeans = KMeans(n_clusters=samples_per_element, init=coord_sample2, n_init=1, max_iter=1).fit(coord_sample2)
+    pred_sample1 = kmeans.predict(coord_sample1)
+
+    sample_spheres = []
+
+    if samples_per_element == 1:
+        actual = smallestenclosingcircle.make_circle(coord_sample1)
+        x, y, r = actual
+        sample_spheres.append([x, y, r])
+    else:
+        for s in range(samples_per_element):
+            idx = pred_sample1 == s
+            cur_s = coord_sample1[idx]
+            actual = smallestenclosingcircle.make_circle(cur_s)
+            x, y, r = actual
+            sample_spheres.append([x, y, r])
+
+    sample_spheres = np.array(sample_spheres)
+    # sample_spheres_copy = sample_spheres.copy()
+    # # print (sample_spheres.shape,np.mean(sample_spheres_copy,0).shape)
+    # sample_spheres[:, 0:2] = sample_spheres_copy[:, 0:2] - np.expand_dims(
+    #     np.mean(sample_spheres_copy[:, 0:2], 0), 0)
+    # print(sample_spheres.shape, sample_spheres)
+    return sample_spheres
+
+
+def getSamplesFromImage(im):
+    """
+    :param img: ndarray: [W, H, 3or4]
+    :return:
+    """
+    samples_per_element = 10
+    im = np.mean(im, -1)
+    coord = np.argwhere(im > 0) / im.shape[0]
+    coord = np.flip(coord, axis=1)
+    coord[:, 1] = 1 - coord[:, 1]
+    # print(im.shape)
+    # plt.figure(1)
+    # plt.scatter(coord[:, 0], coord[:, 1])
+    # plt.show()
+
+    sample_spheres1 = getSamplesFromImage_helper(coord, 1)
+    sample_spheres2 = getSamplesFromImage_helper(coord, samples_per_element)
+    # print(sample_spheres1.shape, sample_spheres2.shape)
+    c = sample_spheres1[0, 0:2]
+
+    # print('before:', sample_spheres2)
+    sample_spheres_center = sample_spheres1.copy()
+    sample_spheres_elem = sample_spheres2.copy()
+    sample_spheres_center[:, 0:2] = sample_spheres1[:, 0:2] - c
+    sample_spheres_elem[:, 0:2] = sample_spheres2[:, 0:2] - c
+    # print('after:', sample_spheres2)
+    # plt.figure(1)
+    # for ss in range(len(sample_spheres_center)):
+    #     x, y, r = sample_spheres_center[ss]
+    #     circle = plt.Circle((x, y), r, color='g', fill=False)
+    #     plt.gcf().gca().add_artist(circle)
+    # for ss in range(len(sample_spheres_elem)):
+    #     x, y, r = sample_spheres_elem[ss]
+    #     circle = plt.Circle((x, y), r, color='g', fill=False)
+    #     plt.gcf().gca().add_artist(circle)
+    # plt.scatter(sample_spheres_center[0, 0], sample_spheres_center[0, 1], c='r', s=5)
+    # plt.axis('equal')
+    # plt.xlim([-1, 1])
+    # plt.ylim([-1, 1])
+    # plt.show()
+    # print(sample_spheres_center.shape, sample_spheres_elem.shape)
+    sample_spheres = np.concatenate([sample_spheres_center, sample_spheres_elem], 0)
+    # print(sample_spheres.shape)
+    return coord
