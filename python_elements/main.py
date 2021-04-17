@@ -53,8 +53,28 @@ def load_elements(categories):
         # print(sample_spheres.shape)
         for e in categories[k]:
             cur_sample_sphere = sample_spheres.copy()
+            ratio = sample_spheres[0, 2] / e[2]
+            cur_sample_sphere[0, 2] = e[2]
+            cur_sample_sphere[0, 0:2] = e[0:2]
+            cur_sample_sphere[1:, 0:3] /= ratio
+            cur_sample_sphere[1:, 0:2] += e[0:2]
+            # print(cur_sample_sphere[1])
             categories_elem[k].append(cur_sample_sphere)
-    print(len(categories_elem[0]), categories_elem[0][0].shape)
+    # print(len(categories_elem[0]), categories_elem[0][0].shape)
+    fig, ax = plt.subplots()
+    for k in categories_elem.keys():
+        out = categories_elem[k]
+        out = np.array(out)
+        for i in range(out.shape[0]):
+            for j in range(1, out.shape[1]):
+                # plt.scatter(out[:, 0], out[:, 1], s=5)
+                circle = plt.Circle((out[i, j, 0], out[i, j, 1]), out[i, j, 2], color='r', fill=False)
+                ax.add_artist(circle)
+        plt.axis('equal')
+        plt.xlim([-0.2, 1.2])
+        plt.ylim([-0.2, 1.2])
+    plt.show()
+
 
 def main():
     config_filename = opt.config_filename
