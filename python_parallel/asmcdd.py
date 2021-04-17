@@ -57,6 +57,7 @@ class ASMCDD(torch.nn.Module):
         self.initialize(domainLength=opt.domainLength)
         utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
         self.plot_pretty_pcf(self.target, self.outputs, self.relations)
+
         utils.plot_disks(self.topological_order, self.outputs, self.opt.output_folder + '/output')
 
     def computeTarget(self):
