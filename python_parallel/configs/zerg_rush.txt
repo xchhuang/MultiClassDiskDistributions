@@ -1,2 +1,0 @@
-examples/zerg_rush.txt
-0
