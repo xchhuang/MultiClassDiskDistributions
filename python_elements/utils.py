@@ -75,7 +75,7 @@ def multiSphereDistance(a, b, rmax):
     :return: Max-Min version of hausdorff distance
     """
     # print('multiSphereDistance')
-    use_center = False
+    use_center = True
     N, M, D = a.shape
     d_max = []
     if use_center:
@@ -148,8 +148,8 @@ def plot_elements(topological_order, outputs, filename):
                 # plt.scatter(out[:, 0], out[:, 1], s=5)
                 circle = plt.Circle((out[i, j, 0], out[i, j, 1]), out[i, j, 2], color=colors_dict[k], fill=False)
                 ax.add_artist(circle)
-            # circle = plt.Circle((out[i, 0, 0], out[i, 0, 1]), out[i, 0, 2], color='k', fill=False)
-            # ax.add_artist(circle)
+            circle = plt.Circle((out[i, 0, 0], out[i, 0, 1]), out[i, 0, 2], color='k', fill=False)
+            ax.add_artist(circle)
         plt.axis('equal')
         plt.xlim([-0.2, 1.2])
         plt.ylim([-0.2, 1.2])

@@ -65,8 +65,12 @@ class ASMCDD(torch.nn.Module):
         self.computeTarget()
         self.outputs = []
 
-        self.plot_pretty_pcf(self.target, self.target, self.relations)
+
         utils.plot_elements(categories.keys(), self.target, self.opt.output_folder + '/target_elements')
+
+
+        self.plot_pretty_pcf(self.target, self.target, self.relations)
+
         self.initialize(domainLength=opt.domainLength)
 
         self.plot_pretty_pcf(self.target, self.outputs, self.relations)

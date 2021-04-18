@@ -30,7 +30,7 @@ parser.add_argument('--nSteps', type=int, default=50, help='number of bins for c
 parser.add_argument('--sigma', type=float, default=0.25, help='smoothness of Gaussian kernel sigma for computing PCF')
 parser.add_argument('--domainLength', type=int, default=1,
                     help='domain size: 1 for same domain and n for n times larger domain')
-parser.add_argument('--samples_per_element', type=int, default=5, help='samples per element')
+parser.add_argument('--samples_per_element', type=int, default=2, help='samples per element')
 parser.add_argument('--n_iter', type=int, default=1, help='number of iterations in refinement step')
 
 opt = parser.parse_args()
@@ -55,12 +55,21 @@ def load_elements(categories):
         sample_spheres = utils.getSamplesFromImage(im, opt.samples_per_element)
         # print(sample_spheres.shape)
         for e in categories[k]:
+            rotate_factor = np.random.rand() * 2 * np.pi    # random angle to rotate
+
             cur_sample_sphere = sample_spheres.copy()
             ratio = sample_spheres[0, 2] / e[2]
-            cur_sample_sphere[0, 2] = e[2]
-            cur_sample_sphere[0, 0:2] = e[0:2]
-            cur_sample_sphere[1:, 0:3] /= ratio
-            cur_sample_sphere[1:, 0:2] += e[0:2]
+            cur_sample_sphere[0] = e    # center, the same
+            # cur_sample_sphere[0, 0:2] = e[0:2]
+            cur_sample_sphere[1:, 0:3] /= ratio     # sample_spheres need to be scaled and rotated
+            tmp_copy = cur_sample_sphere[1:, 0:2].copy()
+
+            cur_sample_sphere[1:, 0:1] = np.cos(rotate_factor) * tmp_copy[:, 0:1] - np.sin(rotate_factor) * tmp_copy[:,
+                                                                                                            1:2]
+            cur_sample_sphere[1:, 1:2] = np.sin(rotate_factor) * tmp_copy[:, 0:1] + np.cos(rotate_factor) * tmp_copy[:,
+                                                                                                            1:2]
+
+            cur_sample_sphere[1:, 0:2] += e[0:2]    # moved to e's positions
             # print(cur_sample_sphere[1])
             categories_elem[k].append(cur_sample_sphere)
     # print(len(categories_elem[0]), categories_elem[0][0].shape)
