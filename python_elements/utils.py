@@ -21,8 +21,8 @@ class Contribution:
 
 def diskDistance(a, b, rmax):
     n_dim = a.size(-1)
-    # print(a.shape)
-    # print(b.shape)
+    # print(a.shape, b.shape)
+
     radius = torch.cat((a[:, n_dim - 1:n_dim], b[:, n_dim - 1:n_dim]), dim=1)
     # print(radius)
     r1 = torch.max(radius, dim=1)[0] / rmax
@@ -63,9 +63,47 @@ def diskDistance(a, b, rmax):
     if d_norm[idx4].size(0) > 0:
         d_norm[idx4] = f[idx4] - 4 * r1[idx4] - 2 * r2[idx4] + 3
         # print('else:', d_norm[idx4])
-
+    # print('disks:', d_norm.shape)
     return d_norm
 
+
+def multiSphereDistance(a, b, rmax):
+    """
+    :param a: [N, M, D]: e.g., [99 elements, 3 samples_per_element, 3params_per_sample(x, y, r)]
+    :param b: [N, M, D]: e.g., [99 elements, 3 samples_per_element, 3params_per_sample(x, y, r)]
+    :param rmax: PCF's rmax parameter
+    :return: Max-Min version of hausdorff distance
+    """
+    # print('multiSphereDistance')
+    use_center = False
+    N, M, D = a.shape
+    d_max = []
+    if use_center:
+        b = b[:, 0:1, :]
+        b = b.contiguous().view(-1, D)
+        # for k in range(1, M):   # first is centroid sphere
+        for k in range(0, 1):  # first is centroid sphere
+            cur_a = a[:, k, :].repeat(1, 1)
+            d_1toothers = diskDistance(cur_a, b, rmax)
+            d_1toothers = torch.min(d_1toothers.view(N, 1), 1)[0]
+            d_max.append(d_1toothers)
+        d_max = torch.stack(d_max, 1)
+        # print(d_max.shape)
+        d = torch.max(d_max, 1)[0]
+        # print(d.shape)
+    else:
+        b = b[:, 1:, :]
+        b = b.contiguous().view(-1, D)
+        for k in range(1, M):   # first is centroid sphere
+            cur_a = a[:, k, :].repeat(M - 1, 1)
+            d_1toothers = diskDistance(cur_a, b, rmax)
+            d_1toothers = torch.min(d_1toothers.view(N, M - 1), 1)[0]
+            d_max.append(d_1toothers)
+        d_max = torch.stack(d_max, 1)
+        # print(d_max.shape)
+        d = torch.min(d_max, 1)[0]
+        # print(d.shape)
+    return d
 
 colors_dict = {
     0: 'r',
@@ -103,13 +141,15 @@ def plot_disks(topological_order, outputs, filename):
 def plot_elements(topological_order, outputs, filename):
     fig, ax = plt.subplots()
     for k in topological_order:
-        out = outputs[k]
-        out = np.array(out)
+        out = outputs[k].detach().cpu().numpy()
+        # out = np.array(out)
         for i in range(out.shape[0]):
             for j in range(1, out.shape[1]):
                 # plt.scatter(out[:, 0], out[:, 1], s=5)
                 circle = plt.Circle((out[i, j, 0], out[i, j, 1]), out[i, j, 2], color=colors_dict[k], fill=False)
                 ax.add_artist(circle)
+            # circle = plt.Circle((out[i, 0, 0], out[i, 0, 1]), out[i, 0, 2], color='k', fill=False)
+            # ax.add_artist(circle)
         plt.axis('equal')
         plt.xlim([-0.2, 1.2])
         plt.ylim([-0.2, 1.2])

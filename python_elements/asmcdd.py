@@ -22,13 +22,20 @@ from refiner import Refiner
 
 
 def get_weight(d_test, cur_pcf_model, diskfact):
-    weight = cur_pcf_model.perimeter_weight(d_test[0], d_test[1], diskfact)
+    """
+    :param d_test: [samples_per_element+1, 3]
+    :param cur_pcf_model:
+    :param diskfact: 1
+    :return:
+    """
+    weight = cur_pcf_model.perimeter_weight(d_test[0, 0], d_test[0, 1], diskfact)
     return weight
 
 
 def get_weights(disks, cur_pcf_model, diskfact):
     weights = []
     for p in disks:
+        # print('get_weights:', p.shape)
         weight = get_weight(p, cur_pcf_model, diskfact)
         weights.append(weight)
     # weights = torch.stack(weights, 0)
@@ -48,7 +55,8 @@ class ASMCDD(torch.nn.Module):
         self.sigma = opt.sigma
         self.target = torch.nn.ParameterList()
         for k in categories.keys():
-            x = torch.from_numpy(np.array(categories_elem[k])).float()[:, 0, :]
+            x = torch.from_numpy(np.array(categories_elem[k])).float()[:, :, :]
+            # print(self.opt.samples_per_element, x.shape)
             # print('read target:', x.shape)
             self.target.append(torch.nn.Parameter(x))
 
@@ -56,13 +64,13 @@ class ASMCDD(torch.nn.Module):
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
         self.outputs = []
-        return
-        self.plot_pretty_pcf(self.target, self.target, self.relations)
-        self.initialize(domainLength=opt.domainLength)
-        utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
-        self.plot_pretty_pcf(self.target, self.outputs, self.relations)
 
-        utils.plot_disks(self.topological_order, self.outputs, self.opt.output_folder + '/output')
+        self.plot_pretty_pcf(self.target, self.target, self.relations)
+        utils.plot_elements(categories.keys(), self.target, self.opt.output_folder + '/target_elements')
+        self.initialize(domainLength=opt.domainLength)
+
+        self.plot_pretty_pcf(self.target, self.outputs, self.relations)
+        utils.plot_elements(self.topological_order, self.outputs, self.opt.output_folder + '/output_elements')
 
     def computeTarget(self):
         n_classes = len(self.target)
@@ -145,8 +153,8 @@ class ASMCDD(torch.nn.Module):
                 pretty_pcf_model = PrettyPCF(self.device, nbbins=self.opt.nSteps, sigma=0.25,
                                              npoints=len(exemplar_disks), n_rmax=5).to(self.device)
 
-                exemplar_pcf_mean = pretty_pcf_model(exemplar_disks, exemplar_parent_disks, same_category)
-                output_pcf_mean = pretty_pcf_model(output_disks, output_parent_disks, same_category)
+                exemplar_pcf_mean = pretty_pcf_model(exemplar_disks[:, 0, :], exemplar_parent_disks[:, 0, :], same_category)
+                output_pcf_mean = pretty_pcf_model(output_disks[:, 0, :], output_parent_disks[:, 0, :], same_category)
 
                 # self.pcf_model[category_i][category_j] = pretty_pcf_model
                 # self.target_pcfs[category_i][category_j] = exemplar_pcf_mean
@@ -158,7 +166,7 @@ class ASMCDD(torch.nn.Module):
                          'g-')
                 plt.legend(['exemplar', 'output'])
                 plt.savefig(
-                    self.opt.output_folder + '/{:}_pcf_{:}_{:}'.format(self.opt.scene_name, category_i, category_j))
+                    self.opt.output_folder + '/{:}_point_pcf_{:}_{:}'.format(self.opt.scene_name, category_i, category_j))
                 plt.clf()
         print('===> Plot Pretty PCF, Done.')
 
@@ -177,19 +185,8 @@ class ASMCDD(torch.nn.Module):
         others = defaultdict(list)  # existing generated disks
         for i in topological_order:
             others[i] = []
-        print(topological_order)
+        # print(topological_order)
 
-        # TODO: predefined id 0 for debugging
-        # predefined_id_pts = defaultdict(list)
-        # for i in range(2):
-        #     pts = []
-        #     with open('../simpler_cpp/outputs/debug_forest_{:}.txt'.format(i)) as f:
-        #         lines = f.readlines()
-        #         for line in lines:
-        #             line = line.strip().split(' ')
-        #             l = [float(x) for x in line]
-        #             pts.append(l)
-        #     predefined_id_pts[i] = pts
         class_done = []
 
         for i in topological_order:
@@ -201,19 +198,26 @@ class ASMCDD(torch.nn.Module):
             fails = 0
             n_accepted = 0
 
-            target_disks = self.categories[i]
-            target_disks = torch.from_numpy(np.array(target_disks)).float().to(self.device)
-            min_x, max_x = target_disks[:, 0].min().item(), target_disks[:, 0].max().item()
-            min_y, max_y = target_disks[:, 1].min().item(), target_disks[:, 1].max().item()
-            # print(min_x, max_x, min_y, max_y)
+            target_disks = self.target[i]
             # print(target_disks.shape)
             output_disks_radii = torch.zeros(target_disks.shape[0] * n_repeat).float().to(self.device)
-            output_disks_radii = target_disks[:, -1].repeat(n_repeat)
-            # idx = torch.randperm(output_disks_radii.shape[0])
-            # output_disks_radii = output_disks_radii[idx].view(output_disks_radii.size())
-            output_disks_radii, _ = torch.sort(output_disks_radii, descending=True)
-            output_disks_radii /= domainLength
-            # print(i, output_disks_radii.shape)
+            output_disks_radii = target_disks[:, 0, -1].repeat(n_repeat)
+            # print(output_disks_radii.shape)
+            _, idx = torch.sort(output_disks_radii, descending=True)
+            # print(idx.shape)
+            # output_disks_radii = output_disks_radii[idx]
+
+            output_disks_radii = target_disks.repeat(n_repeat, 1, 1)[idx]
+            # print(output_disks_radii.shape)
+            # print(output_disks_radii[:, 0, -1])
+            output_disks_radii[:, :, -1] /= domainLength
+            c = output_disks_radii[:, 0, 0:2]
+            output_disks_radii[:, :, 0:2] -= c.unsqueeze(1).repeat(1, self.opt.samples_per_element+1, 1)
+            # print(c.shape, output_disks_radii[:, :, 0:2].shape)
+            # print(output_disks_radii[:, 0, -1])
+            out = defaultdict(list)
+            out[0] = output_disks_radii
+            utils.plot_elements([0], out, self.opt.output_folder + '/test_{:}'.format(i))
 
             # init
             # print(i, self.relations[i])
@@ -260,8 +264,12 @@ class ASMCDD(torch.nn.Module):
                 #     rx = min_xy + np.random.rand() * (domainLength - min_xy * 2)  # my version
                 #     ry = min_xy + np.random.rand() * (domainLength - min_xy * 2)
                 # print(rx, ry)
-                d_test = [rx, ry, output_disks_radii[n_accepted]]
-                d_test = torch.from_numpy(np.array(d_test)).float().to(self.device)  # d_test: torch.Tensor: (3,)
+                # print(output_disks_radii[n_accepted].shape)
+                d_test = output_disks_radii[n_accepted].clone()
+                d_test[:, 0] += rx
+                d_test[:, 1] += ry
+                # d_test = [rx, ry, output_disks_radii[n_accepted]]
+                # d_test = torch.from_numpy(np.array(d_test)).float().to(self.device)  # d_test: torch.Tensor: (3,)
 
                 for relation in self.relations[i]:
                     # if i == 0:
@@ -348,10 +356,14 @@ class ASMCDD(torch.nn.Module):
                             for nj in range(1, N_J):
                                 gx = 1 / N_I * ni
                                 gy = 1 / N_J * nj
-                                cell_test = [gx, gy, output_disks_radii[n_accepted]]
+                                # cell_test = [gx, gy, output_disks_radii[n_accepted]]
                                 # if min_x > gx > max_x or min_y > gy > max_y:
                                 #     continue
-                                cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
+                                # cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
+
+                                cell_test = output_disks_radii[n_accepted].clone()
+                                cell_test[:, 0] += gx
+                                cell_test[:, 1] += gy
 
                                 currentError = 0
                                 current_contrib = defaultdict(Contribution)
@@ -415,71 +427,72 @@ class ASMCDD(torch.nn.Module):
             """
             Refinement step:
             """
-            category_i = i
-            current_output = torch.stack(others[category_i], 0)
-            model_refine = Refiner(self.device, self.opt, current_output).to(self.device)
-            optimizer = torch.optim.Adam(model_refine.parameters(), lr=1e-4)
-            n_iter = self.opt.n_iter
-            start_time = time()
-            for itr in range(1, n_iter + 1):
-                cur_all_outputs = []
-                if itr == 1:
-                    for k in class_done:
-                        cur_all_outputs.append(torch.stack(others[k], 0))
-                    utils.plot_disks(class_done, cur_all_outputs, self.opt.output_folder + '/init_{:}'.format(i))
-
-                optimizer.zero_grad()
-                out = model_refine()
-                loss = torch.zeros(1).to(self.device)
-                for j in range(len(self.relations[i])):
-                    category_j = self.relations[i][j]
-                    current_output_parent = torch.stack(others[category_j], 0)
-                    # print(current_output.shape, current_output_parent.shape)
-                    same_category = False
-                    if category_i == category_j:
-                        same_category = True
-                        current_output_parent = out.clone()  # parent changed as well
-
-                    # cur_pcf_model = self.pcf_model[category_i][category_j]
-                    exemplar_pcf_mean = self.target_pcfs[category_i][category_j][:, 0:2].detach()
-
-                    cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=self.sigma, npoints=len(others[i]),
-                                        n_rmax=5).to(self.device)
-
-                    output_pcf_mean, _, _ = cur_pcf_model(out*1, current_output_parent*1, same_category=same_category,
-                                                          dimen=3, use_fnorm=True, domainLength=domainLength)
-                    cur_loss = torch.nn.functional.mse_loss(output_pcf_mean[:, 1], exemplar_pcf_mean[:, 1])
-                    # print(cur_loss)
-                    loss += cur_loss
-
-                    save_pcf_prefix = 'init'
-                    if itr == 1:
-                        save_pcf_prefix = 'init'
-                    else:
-                        save_pcf_prefix = 'opt'
-                    if itr == 1 or itr % 10 == 0 or itr == n_iter:
-                        plt.figure(1)
-                        plt.plot(exemplar_pcf_mean.detach().cpu().numpy()[:, 0],
-                                 exemplar_pcf_mean.detach().cpu().numpy()[:, 1], 'r-')
-                        plt.plot(output_pcf_mean.detach().cpu().numpy()[:, 0],
-                                 output_pcf_mean.detach().cpu().numpy()[:, 1], 'g-')
-                        plt.title('Category {:}, Parent {:}'.format(category_i, category_j))
-                        plt.legend(['exemplar', 'output'])
-                        plt.savefig(self.opt.output_folder + '/'+save_pcf_prefix+'_pcf_{:}_{:}'.format(category_i, category_j))
-                        plt.clf()
-
-                loss.backward()
-                optimizer.step()
-                if itr % 10 == 0 or itr == n_iter:
-                    print(itr, loss.item())
-                    out = model_refine().detach()
-                    others[i] = list(torch.unbind(out))
-                    for k in class_done:
-                        cur_all_outputs.append(torch.stack(others[k], 0))
-                    utils.plot_disks(class_done, cur_all_outputs, self.opt.output_folder + '/refined_{:}'.format(i))
-
-            end_time = time()
-            print('Refinement time: {:.4f}'.format(end_time - start_time))
+            # TODO: refinement
+            # category_i = i
+            # current_output = torch.stack(others[category_i], 0)
+            # model_refine = Refiner(self.device, self.opt, current_output).to(self.device)
+            # optimizer = torch.optim.Adam(model_refine.parameters(), lr=1e-4)
+            # n_iter = self.opt.n_iter
+            # start_time = time()
+            # for itr in range(1, n_iter + 1):
+            #     cur_all_outputs = []
+            #     if itr == 1:
+            #         for k in class_done:
+            #             cur_all_outputs.append(torch.stack(others[k], 0))
+            #         utils.plot_disks(class_done, cur_all_outputs, self.opt.output_folder + '/init_{:}'.format(i))
+            #
+            #     optimizer.zero_grad()
+            #     out = model_refine()
+            #     loss = torch.zeros(1).to(self.device)
+            #     for j in range(len(self.relations[i])):
+            #         category_j = self.relations[i][j]
+            #         current_output_parent = torch.stack(others[category_j], 0)
+            #         # print(current_output.shape, current_output_parent.shape)
+            #         same_category = False
+            #         if category_i == category_j:
+            #             same_category = True
+            #             current_output_parent = out.clone()  # parent changed as well
+            #
+            #         # cur_pcf_model = self.pcf_model[category_i][category_j]
+            #         exemplar_pcf_mean = self.target_pcfs[category_i][category_j][:, 0:2].detach()
+            #
+            #         cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=self.sigma, npoints=len(others[i]),
+            #                             n_rmax=5).to(self.device)
+            #
+            #         output_pcf_mean, _, _ = cur_pcf_model(out*1, current_output_parent*1, same_category=same_category,
+            #                                               dimen=3, use_fnorm=True, domainLength=domainLength)
+            #         cur_loss = torch.nn.functional.mse_loss(output_pcf_mean[:, 1], exemplar_pcf_mean[:, 1])
+            #         # print(cur_loss)
+            #         loss += cur_loss
+            #
+            #         save_pcf_prefix = 'init'
+            #         if itr == 1:
+            #             save_pcf_prefix = 'init'
+            #         else:
+            #             save_pcf_prefix = 'opt'
+            #         if itr == 1 or itr % 10 == 0 or itr == n_iter:
+            #             plt.figure(1)
+            #             plt.plot(exemplar_pcf_mean.detach().cpu().numpy()[:, 0],
+            #                      exemplar_pcf_mean.detach().cpu().numpy()[:, 1], 'r-')
+            #             plt.plot(output_pcf_mean.detach().cpu().numpy()[:, 0],
+            #                      output_pcf_mean.detach().cpu().numpy()[:, 1], 'g-')
+            #             plt.title('Category {:}, Parent {:}'.format(category_i, category_j))
+            #             plt.legend(['exemplar', 'output'])
+            #             plt.savefig(self.opt.output_folder + '/'+save_pcf_prefix+'_pcf_{:}_{:}'.format(category_i, category_j))
+            #             plt.clf()
+            #
+            #     loss.backward()
+            #     optimizer.step()
+            #     if itr % 10 == 0 or itr == n_iter:
+            #         print(itr, loss.item())
+            #         out = model_refine().detach()
+            #         others[i] = list(torch.unbind(out))
+            #         for k in class_done:
+            #             cur_all_outputs.append(torch.stack(others[k], 0))
+            #         utils.plot_disks(class_done, cur_all_outputs, self.opt.output_folder + '/refined_{:}'.format(i))
+            #
+            # end_time = time()
+            # print('Refinement time: {:.4f}'.format(end_time - start_time))
 
         """
         Final output:

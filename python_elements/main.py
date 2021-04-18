@@ -121,7 +121,6 @@ def main():
             print('#Disk of class {:} {:}, their parents {:}'.format(k, len(categories[k]), relations[k]))
 
         categories_elem = load_elements(categories)
-        # utils.plot_elements(categories_elem.keys(), categories_elem, opt.output_folder + '/target_elements')
 
         Trainer(device, opt, categories, categories_elem, relations)
 

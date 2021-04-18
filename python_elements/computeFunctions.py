@@ -12,16 +12,18 @@ from utils import Contribution
 
 def compute_contribution(device, nbbins, pi, others, other_weights, cur_pcf_model, same_category, target_size, diskfactor):
     out = Contribution(device, nbbins)
-    out.weights = cur_pcf_model.perimeter_weight(pi[0], pi[1], diskfactor)
+    out.weights = cur_pcf_model.perimeter_weight(pi[0, 0], pi[0, 1], diskfactor)
     if len(others) == 0:
         return out
     pj = others
-    pi = pi.unsqueeze(0).repeat(pj.size(0), 1)
+    pi = pi.unsqueeze(0).repeat(pj.size(0), 1, 1)
     # print('pipj:', pi.shape, pj.shape)
     rmax = cur_pcf_model.rmax
 
     nbbins = cur_pcf_model.nbbins
-    d = utils.diskDistance(pi, pj, rmax)
+    # d = utils.diskDistance(pi, pj, rmax)
+    d = utils.multiSphereDistance(pi, pj, rmax)
+
     rs = cur_pcf_model.rs
     area = cur_pcf_model.area
     # print(rs.shape, d.shape)
@@ -268,21 +270,17 @@ class PCF(torch.nn.Module):
                 pj = torch.cat([disks_a[0:i], disks_a[i+1:]])   # ignore the i_th disk itself
 
             # print(pi.shape, pj.shape)
-            pi = pi.unsqueeze(0).repeat(pj.size(0), 1)
+            pi = pi.unsqueeze(0).repeat(pj.size(0), 1, 1)
             # print(pi.shape, pj.shape)
-
-            if use_fnorm:
-                d = utils.diskDistance(pi, pj, self.rmax)
-                # print(i, d)
-                val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins))
-                # print(self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins))
-                # print((self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins)).shape)
-                # print(val)
-            else:
-                # dis = utils.euclidean(pts_1, pts_2)
-                # diff = (self.rs.view(1, -1) - dis.view(-1, 1).repeat(1, self.nbbins)) / self.rmax
-                # val = self.gaussianKernel(diff)
-                pass
+            # pairwise_dist = torch.cdist(pi[..., 0:2].contiguous(), pj[..., 0:2].contiguous(), 2)
+            # print(pairwise_dist.shape)
+            # if use_fnorm:
+            # d = utils.diskDistance(pi, pj, self.rmax)
+            d = utils.multiSphereDistance(pi, pj, self.rmax)
+            val = self.gaussianKernel(self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins))
+            # print(self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins))
+            # print((self.rs.view(1, -1) / self.rmax - d.view(-1, 1).repeat(1, self.nbbins)).shape)
+            # print(val)
 
             pts_w = pi[0:1].view(1, -1)  # same
             weights = self.perimeter_weight(pts_w[:, 0], pts_w[:, 1], 1/domainLength)
