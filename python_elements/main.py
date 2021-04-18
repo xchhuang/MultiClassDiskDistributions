@@ -14,6 +14,7 @@ from trainer import Trainer
 import utils
 from PIL import Image
 import sys
+import renderer
 
 sys.path.append('../')
 
@@ -55,7 +56,7 @@ def load_elements(categories):
         sample_spheres = utils.getSamplesFromImage(im, opt.samples_per_element)
         # print(sample_spheres.shape)
         for e in categories[k]:
-            rotate_factor = np.random.rand() * 2 * np.pi    # random angle to rotate
+            rotate_factor = 0  # np.random.rand() * 2 * np.pi    # random angle to rotate
 
             cur_sample_sphere = sample_spheres.copy()
             ratio = sample_spheres[0, 2] / e[2]
@@ -74,7 +75,7 @@ def load_elements(categories):
             categories_elem[k].append(cur_sample_sphere)
     # print(len(categories_elem[0]), categories_elem[0][0].shape)
     # utils.plot_elements(categories_elem.keys(), categories_elem, opt.output_folder+'/target_elements')
-    return categories_elem
+    return categories_elem, elements
 
 
 def main():
@@ -129,9 +130,9 @@ def main():
         for k in categories.keys():
             print('#Disk of class {:} {:}, their parents {:}'.format(k, len(categories[k]), relations[k]))
 
-        categories_elem = load_elements(categories)
-
-        Trainer(device, opt, categories, categories_elem, relations)
+        categories_elem, elements = load_elements(categories)
+        renderer.render(categories_elem, elements)
+        # Trainer(device, opt, categories, categories_elem, relations)
 
 
 if __name__ == "__main__":
