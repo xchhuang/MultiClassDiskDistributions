@@ -37,17 +37,22 @@ def get_weights(disks, cur_pcf_model, diskfact):
 
 
 class ASMCDD(torch.nn.Module):
-    def __init__(self, device, opt, categories, relations):
+    def __init__(self, device, opt, categories, categories_elem, relations):
         super(ASMCDD, self).__init__()
         self.device = device
         self.opt = opt
         self.categories = categories
+        self.categories_elem = categories_elem
         self.relations = relations
         self.nSteps = opt.nSteps
         self.sigma = opt.sigma
         self.target = torch.nn.ParameterList()
         for k in categories.keys():
-            self.target.append(torch.nn.Parameter(torch.from_numpy(np.array(categories[k])).float()))
+            x = torch.from_numpy(np.array(categories[k])).float()
+            # print(x.shape)
+            self.target.append(torch.nn.Parameter(x))
+
+
         self.pcf_model = defaultdict(dict)
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
@@ -426,7 +431,7 @@ class ASMCDD(torch.nn.Module):
             current_output = torch.stack(others[category_i], 0)
             model_refine = Refiner(self.device, self.opt, current_output).to(self.device)
             optimizer = torch.optim.Adam(model_refine.parameters(), lr=1e-4)
-            n_iter = 100
+            n_iter = self.opt.n_iter
             start_time = time()
             for itr in range(1, n_iter + 1):
                 cur_all_outputs = []

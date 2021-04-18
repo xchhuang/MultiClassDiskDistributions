@@ -100,6 +100,23 @@ def plot_disks(topological_order, outputs, filename):
     plt.clf()
 
 
+def plot_elements(topological_order, outputs, filename):
+    fig, ax = plt.subplots()
+    for k in topological_order:
+        out = outputs[k]
+        out = np.array(out)
+        for i in range(out.shape[0]):
+            for j in range(1, out.shape[1]):
+                # plt.scatter(out[:, 0], out[:, 1], s=5)
+                circle = plt.Circle((out[i, j, 0], out[i, j, 1]), out[i, j, 2], color=colors_dict[k], fill=False)
+                ax.add_artist(circle)
+        plt.axis('equal')
+        plt.xlim([-0.2, 1.2])
+        plt.ylim([-0.2, 1.2])
+    plt.savefig(filename)
+    plt.clf()
+
+
 def topologicalSort(num_classes, relations):
     graph = defaultdict(list)
     for k in range(num_classes):
@@ -159,12 +176,13 @@ def getSamplesFromImage_helper(coord, samples_per_element):
     return sample_spheres
 
 
-def getSamplesFromImage(im):
+def getSamplesFromImage(im, samples_per_element):
     """
     :param img: ndarray: [W, H, 3or4]
+    :param samples_per_element: >1
     :return:
     """
-    samples_per_element = 10
+
     im = np.mean(im, -1)
     coord = np.argwhere(im > 0) / im.shape[0]
     coord = np.flip(coord, axis=1)

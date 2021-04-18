@@ -19,7 +19,7 @@ from refiner import Refiner
 
 
 class Trainer:
-    def __init__(self, device, opt, categories, relations):
+    def __init__(self, device, opt, categories, categories_elem, relations):
         super(Trainer, self).__init__()
         self.device = device
         self.opt = opt
@@ -27,10 +27,10 @@ class Trainer:
         self.pcf_model = defaultdict(dict)
         self.target_pcfs = defaultdict(dict)
 
-        if not opt.refine:  # initialization via Metropolis Hastings sampling
-            ASMCDD(device, opt, categories, relations)
-        else:  # refine via gradient descent
-            self.refine(categories, relations)
+        # if not opt.refine:  # initialization via Metropolis Hastings sampling
+        ASMCDD(device, opt, categories, categories_elem, relations)
+        # else:  # refine via gradient descent
+        #     self.refine(categories, relations)
 
     def plot_pcf(self, exemplar, output, relations):
         n_classes = len(exemplar)

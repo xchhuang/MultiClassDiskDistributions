@@ -14,11 +14,11 @@ from trainer import Trainer
 import utils
 from PIL import Image
 import sys
+
 sys.path.append('../')
 
-
 # device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-device = torch.device('cpu')    # seems cpu is faster
+device = torch.device('cpu')  # seems cpu is faster
 # command
 # python main.py --config_filename=configs/zerg_rush.txt
 
@@ -28,7 +28,10 @@ parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.tx
 parser.add_argument('--refine', action='store_true')
 parser.add_argument('--nSteps', type=int, default=50, help='number of bins for computing PCF')
 parser.add_argument('--sigma', type=float, default=0.25, help='smoothness of Gaussian kernel sigma for computing PCF')
-parser.add_argument('--domainLength', type=int, default=1, help='domain size: 1 for same domain and n for n times larger domain')
+parser.add_argument('--domainLength', type=int, default=1,
+                    help='domain size: 1 for same domain and n for n times larger domain')
+parser.add_argument('--samples_per_element', type=int, default=5, help='samples per element')
+parser.add_argument('--n_iter', type=int, default=1, help='number of iterations in refinement step')
 
 opt = parser.parse_args()
 
@@ -40,16 +43,16 @@ def load_elements(categories):
     path_prefix = './elements'
     elements = []
     for filename in filenames:
-        im = Image.open(path_prefix+'/'+filename+'.png').convert('RGBA')
+        im = Image.open(path_prefix + '/' + filename + '.png').convert('RGBA')
         elements.append(im)
     # print(len(elements))
     # categories_img = []
     categories_elem = defaultdict(list)
-    for k in categories.keys():     # assume number of classes is equal to number of elements type
+    for k in categories.keys():  # assume number of classes is equal to number of elements type
         im = elements[k]
         im = im.resize((img_res, img_res), resample=Image.LANCZOS)
-        im = np.asarray(im)     # [W, H, 3or4]
-        sample_spheres = utils.getSamplesFromImage(im)
+        im = np.asarray(im)  # [W, H, 3or4]
+        sample_spheres = utils.getSamplesFromImage(im, opt.samples_per_element)
         # print(sample_spheres.shape)
         for e in categories[k]:
             cur_sample_sphere = sample_spheres.copy()
@@ -61,19 +64,8 @@ def load_elements(categories):
             # print(cur_sample_sphere[1])
             categories_elem[k].append(cur_sample_sphere)
     # print(len(categories_elem[0]), categories_elem[0][0].shape)
-    fig, ax = plt.subplots()
-    for k in categories_elem.keys():
-        out = categories_elem[k]
-        out = np.array(out)
-        for i in range(out.shape[0]):
-            for j in range(1, out.shape[1]):
-                # plt.scatter(out[:, 0], out[:, 1], s=5)
-                circle = plt.Circle((out[i, j, 0], out[i, j, 1]), out[i, j, 2], color='r', fill=False)
-                ax.add_artist(circle)
-        plt.axis('equal')
-        plt.xlim([-0.2, 1.2])
-        plt.ylim([-0.2, 1.2])
-    plt.show()
+    # utils.plot_elements(categories_elem.keys(), categories_elem, opt.output_folder+'/target_elements')
+    return categories_elem
 
 
 def main():
@@ -114,8 +106,8 @@ def main():
                 idx = id_map[line[0]]
                 x, y, r = line[1], line[2], line[3]
                 # print(idx)
-                categories[idx].append([x/10000.0, y/10000.0, r/10000.0])
-                radii.append(r/10000.0)
+                categories[idx].append([x / 10000.0, y / 10000.0, r / 10000.0])
+                radii.append(r / 10000.0)
 
         for k in range(num_classes):
             relations[k].append(k)
@@ -128,11 +120,11 @@ def main():
         for k in categories.keys():
             print('#Disk of class {:} {:}, their parents {:}'.format(k, len(categories[k]), relations[k]))
 
-        
-        # Trainer(device, opt, categories, relations)
-        load_elements(categories)
+        categories_elem = load_elements(categories)
+        # utils.plot_elements(categories_elem.keys(), categories_elem, opt.output_folder + '/target_elements')
+
+        Trainer(device, opt, categories, categories_elem, relations)
+
 
 if __name__ == "__main__":
     main()
-
-
