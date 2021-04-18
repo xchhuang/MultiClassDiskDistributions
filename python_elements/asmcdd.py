@@ -48,16 +48,15 @@ class ASMCDD(torch.nn.Module):
         self.sigma = opt.sigma
         self.target = torch.nn.ParameterList()
         for k in categories.keys():
-            x = torch.from_numpy(np.array(categories[k])).float()
-            # print(x.shape)
+            x = torch.from_numpy(np.array(categories_elem[k])).float()[:, 0, :]
+            # print('read target:', x.shape)
             self.target.append(torch.nn.Parameter(x))
-
 
         self.pcf_model = defaultdict(dict)
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
         self.outputs = []
-
+        return
         self.plot_pretty_pcf(self.target, self.target, self.relations)
         self.initialize(domainLength=opt.domainLength)
         utils.plot_disks(self.topological_order, self.target, self.opt.output_folder + '/target')
@@ -71,26 +70,15 @@ class ASMCDD(torch.nn.Module):
         print('relations:', self.relations)
         for i in range(n_classes):
             category_i = i
-            target_disks = self.categories[i]
+            target_disks = self.target[i]
             for j in range(len(self.relations[i])):
-
                 plt.figure(1)
-
                 category_j = self.relations[i][j]
-                parent_disks = self.categories[category_j]
-                # print(len(target_disk), len(parent_disk))
-                target_disks = np.array(target_disks).astype(np.float32)
-                parent_disks = np.array(parent_disks).astype(np.float32)
-                target_disks = torch.from_numpy(target_disks).float().to(self.device)
-                parent_disks = torch.from_numpy(parent_disks).float().to(self.device)
-                # print(target_disks, parent_disks)
+                parent_disks = self.target[category_j]
                 same_category = False
-                # print(category_i, category_j, 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * len(target_disks))))
                 if category_i == category_j:
                     same_category = True
-                # if not (category_i == 0 and category_j == 0):
-                #     continue
-                # print(category_j, category_i)
+
                 cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=self.sigma, npoints=len(target_disks),
                                     n_rmax=5).to(self.device)
                 print('Target Info, id: {:}, parent: {:}, rmax: {:.4f}'.format(category_i, category_j,

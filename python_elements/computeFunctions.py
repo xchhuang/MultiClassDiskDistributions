@@ -254,7 +254,7 @@ class PCF(torch.nn.Module):
 
     # def forward(self, pts, c, t, dimen=3, use_fnorm=True, mean_pcf=False):
     def forward(self, disks_a, disks_b, same_category, dimen=3, use_fnorm=True, domainLength=1):
-        # print(disks_a.shape, disks_b.shape, same_category)
+        # print('PCF forward:', disks_a.shape, disks_b.shape, same_category)
         pcf = torch.zeros(self.nbbins, 2).float().to(self.device)
         # hist = torch.zeros(self.nbbins)
         pcf_lower = torch.ones(self.nbbins).float().to(self.device) * np.inf  # init with very large number
@@ -264,10 +264,12 @@ class PCF(torch.nn.Module):
             pi = disks_a[i]
             if not same_category:
                 pj = disks_b
-                pi = pi.repeat(pj.size(0), 1)
             else:
                 pj = torch.cat([disks_a[0:i], disks_a[i+1:]])   # ignore the i_th disk itself
-                pi = pi.repeat(pj.size(0), 1)
+
+            # print(pi.shape, pj.shape)
+            pi = pi.unsqueeze(0).repeat(pj.size(0), 1)
+            # print(pi.shape, pj.shape)
 
             if use_fnorm:
                 d = utils.diskDistance(pi, pj, self.rmax)
