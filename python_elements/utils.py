@@ -75,7 +75,7 @@ def multiSphereDistance(a, b, rmax):
     :return: Max-Min version of hausdorff distance
     """
     # print('multiSphereDistance')
-    use_center = True
+    use_center = False
     N, M, D = a.shape
     d_max = []
     if use_center:
@@ -101,7 +101,7 @@ def multiSphereDistance(a, b, rmax):
             d_max.append(d_1toothers)
         d_max = torch.stack(d_max, 1)
         # print(d_max.shape)
-        d = torch.min(d_max, 1)[0]
+        d = torch.max(d_max, 1)[0]
         # print(d.shape)
     return d
 

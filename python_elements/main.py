@@ -23,7 +23,7 @@ device = torch.device('cpu')  # seems cpu is faster
 # command
 # python main.py --config_filename=configs/zerg_rush.txt
 
-# np.random.seed(0)
+np.random.seed(2)   # interesting example
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.txt', help='config file name')
 parser.add_argument('--refine', action='store_true')
@@ -50,6 +50,8 @@ def load_elements(categories):
     # categories_img = []
     categories_elem = defaultdict(list)
     categories_radii_ratio = defaultdict(list)
+    categories_rotate = defaultdict(list)
+
     for k in categories.keys():  # assume number of classes is equal to number of elements type
         im = elements[k]
         im = im.resize((img_res, img_res), resample=Image.LANCZOS)
@@ -57,7 +59,8 @@ def load_elements(categories):
         sample_spheres = utils.getSamplesFromImage(im, opt.samples_per_element)
         # print(sample_spheres.shape)
         for e in categories[k]:
-            rotate_factor = 0   # np.random.rand() * 2 * np.pi    # random angle to rotate
+            rotate_factor = np.random.rand() * 2 * np.pi    # random angle to rotate
+            categories_rotate[k].append(rotate_factor)
 
             cur_sample_sphere = sample_spheres.copy()
             ratio = sample_spheres[0, 2] / e[2]
@@ -68,17 +71,40 @@ def load_elements(categories):
             cur_sample_sphere[1:, 0:3] /= ratio     # sample_spheres need to be scaled and rotated
             tmp_copy = cur_sample_sphere[1:, 0:2].copy()
 
+            # fig, ax = plt.subplots()
+            # for i in range(1, cur_sample_sphere.shape[0]):
+            #     # plt.scatter(out[:, 0], out[:, 1], s=5)
+            #     circle = plt.Circle((cur_sample_sphere[i, 0], cur_sample_sphere[i, 1]), cur_sample_sphere[i, 2], color='g', fill=False)
+            #     ax.add_artist(circle)
+            # plt.axis('equal')
+            # # plt.xlim([-0.5, 2.5])
+            # # plt.ylim([-0.5, 2.5])
+            # plt.xlim([-0.2, 0.2])
+            # plt.ylim([-0.2, 0.2])
+
             cur_sample_sphere[1:, 0:1] = np.cos(rotate_factor) * tmp_copy[:, 0:1] - np.sin(rotate_factor) * tmp_copy[:,
                                                                                                             1:2]
             cur_sample_sphere[1:, 1:2] = np.sin(rotate_factor) * tmp_copy[:, 0:1] + np.cos(rotate_factor) * tmp_copy[:,
                                                                                                             1:2]
+
+            # for i in range(1, cur_sample_sphere.shape[0]):
+            #     # plt.scatter(out[:, 0], out[:, 1], s=5)
+            #     circle = plt.Circle((cur_sample_sphere[i, 0], cur_sample_sphere[i, 1]), cur_sample_sphere[i, 2], color='r', fill=False)
+            #     ax.add_artist(circle)
+            # plt.axis('equal')
+            # # plt.xlim([-0.5, 2.5])
+            # # plt.ylim([-0.5, 2.5])
+            # plt.xlim([-0.2, 0.2])
+            # plt.ylim([-0.2, 0.2])
+            # plt.title(int(rotate_factor * 180 / np.pi))
+            # plt.show()
 
             cur_sample_sphere[1:, 0:2] += e[0:2]    # moved to e's positions
             # print(cur_sample_sphere[1])
             categories_elem[k].append(cur_sample_sphere)
     # print(len(categories_elem[0]), categories_elem[0][0].shape)
     # utils.plot_elements(categories_elem.keys(), categories_elem, opt.output_folder+'/target_elements')
-    return categories_elem, categories_radii_ratio, elements
+    return categories_elem, categories_radii_ratio, categories_rotate, elements
 
 
 def main():
@@ -133,9 +159,9 @@ def main():
         for k in categories.keys():
             print('#Disk of class {:} {:}, their parents {:}'.format(k, len(categories[k]), relations[k]))
 
-        categories_elem, categories_radii_ratio, elements = load_elements(categories)
+        categories_elem, categories_radii_ratio, categories_rotate, elements = load_elements(categories)
         # renderer.render(categories_elem, categories_radii_ratio, elements)
-        Trainer(device, opt, categories, categories_elem, categories_radii_ratio, elements, relations)
+        Trainer(device, opt, categories, categories_elem, categories_radii_ratio, categories_rotate, elements, relations)
 
 
 if __name__ == "__main__":

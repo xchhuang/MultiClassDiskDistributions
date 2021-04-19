@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from skimage.transform import rescale, resize, downscale_local_mean
 
 
-def render(categories_elem, categories_radii_ratio, elements, save_filename):
+def render(categories_elem, categories_radii_ratio, categories_rotate, elements, save_filename):
     print('render')
     res = 512
     vis_img = np.ones((res, res, 3))
@@ -27,9 +27,12 @@ def render(categories_elem, categories_radii_ratio, elements, save_filename):
             # im = resize(im, (int(res / ratio), int(res / ratio), 3))
 
             im = Image.fromarray((im * 255).astype('uint8'), 'RGB')
-            # im_rotate = im.rotate(45, expand=True)
-            im_rotate = im.rotate(45, expand=1, fillcolor=(255, 255, 255))
             w, h = im.size
+            # im_rotate = im.rotate(45, expand=True)
+            rotate_angle = categories_rotate[k][l] * 180 / np.pi
+            im = im.rotate(rotate_angle, expand=1, fillcolor=(255, 255, 255))   # counter clock-wise, need to use 360-rotate_angle
+            new_w, new_h = im.size
+            # print(new_w, new_h, w, h)
             # im_rotate = im_rotate.resize((w, h), resample=Image.LANCZOS)
             # print(im, im_rotate)
             # new_width, new_height = im_rotate.size
@@ -37,11 +40,11 @@ def render(categories_elem, categories_radii_ratio, elements, save_filename):
             # im_pad.paste(im, (0, 0))
             # plt.figure(1)
             # plt.subplot(121)
-            # plt.imshow(im_pad)
+            # plt.imshow(im)
             # plt.subplot(122)
             # plt.imshow(im_rotate)
             # plt.show()
-            im = im.resize((int(res / ratio), int(res / ratio)), resample=Image.LANCZOS)
+            im = im.resize((int(res / ratio * (new_w / w)), int(res / ratio * (new_h / h))), resample=Image.LANCZOS)
             im = np.asarray(im) / 255
 
             # print(im.max(), im.min())

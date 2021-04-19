@@ -45,13 +45,14 @@ def get_weights(disks, cur_pcf_model, diskfact):
 
 
 class ASMCDD(torch.nn.Module):
-    def __init__(self, device, opt, categories, categories_elem, categories_radii_ratio, elements, relations):
+    def __init__(self, device, opt, categories, categories_elem, categories_radii_ratio, categories_rotate, elements, relations):
         super(ASMCDD, self).__init__()
         self.device = device
         self.opt = opt
         self.categories = categories
         self.categories_elem = categories_elem
         self.categories_radii_ratio = categories_radii_ratio
+        self.categories_rotate = categories_rotate
         self.relations = relations
         self.nSteps = opt.nSteps
         self.sigma = opt.sigma
@@ -67,19 +68,20 @@ class ASMCDD(torch.nn.Module):
         self.computeTarget()
         self.outputs = []
         self.output_radii_ratio = defaultdict(list)
+        self.output_ratate = defaultdict(list)
 
         utils.plot_elements(categories.keys(), self.target, self.opt.output_folder + '/target_elements')
 
         self.plot_pretty_pcf(self.target, self.target, self.relations)
 
-        renderer.render(self.target, self.categories_radii_ratio, elements, self.opt.output_folder+'/target_render')
+        renderer.render(self.target, self.categories_radii_ratio, self.categories_rotate, elements, self.opt.output_folder+'/target_render')
 
         self.initialize(domainLength=opt.domainLength)
 
         self.plot_pretty_pcf(self.target, self.outputs, self.relations)
         utils.plot_elements(self.topological_order, self.outputs, self.opt.output_folder + '/output_elements')
 
-        renderer.render(self.outputs, self.output_radii_ratio, elements, self.opt.output_folder+'/output_render')
+        renderer.render(self.outputs, self.output_radii_ratio, self.output_ratate, elements, self.opt.output_folder+'/output_render')
 
     def computeTarget(self):
         n_classes = len(self.target)
@@ -218,7 +220,8 @@ class ASMCDD(torch.nn.Module):
 
             radii_ratio_sorted = torch.from_numpy(np.array(self.categories_radii_ratio[i]))[idx]
             self.output_radii_ratio[i] = list(radii_ratio_sorted.detach().cpu().numpy())
-
+            rotate_sorted = torch.from_numpy(np.array(self.categories_rotate[i]))[idx]
+            self.output_ratate[i] = list(rotate_sorted.detach().cpu().numpy())
 
             output_disks_radii = target_disks.repeat(n_repeat, 1, 1)[idx]
             # print(output_disks_radii.shape)
