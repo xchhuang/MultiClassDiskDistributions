@@ -112,3 +112,23 @@ def topologicalSort(num_classes, relations):
 def toroidalWrapAround(points, domain_size=1):
     points = torch.where(torch.gt(points, domain_size), points - torch.floor(points), points)
     return torch.where(torch.lt(points, 0), points + torch.ceil(torch.abs(points)), points)
+
+
+def generate_grid(num_grids):
+    """
+    must be square
+    """
+    x = list(range(1, num_grids))
+    y = list(range(1, num_grids))
+    xv, yv = np.meshgrid(x, y)
+    w, h = xv.shape[0], xv.shape[1]
+    assert w == h
+    # print(w, h, w * h)
+    points = np.zeros((w * h, 2))
+    points[:, 0] = xv.reshape(w * h)
+    points[:, 1] = yv.reshape(w * h)
+    points /= w
+    # plt.figure(1)
+    # plt.scatter(points[:, 0], points[:, 1], s=5)
+    # plt.show()
+    return points

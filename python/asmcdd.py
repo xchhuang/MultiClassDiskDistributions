@@ -337,6 +337,7 @@ class ASMCDD(torch.nn.Module):
                 if fails > max_fails:
                     # exceed fail threshold, switch to a parallel grid search
                     N_I = N_J = 80 * int(domainLength)  # 100
+                    grid_points = utils.generate_grid(80)
                     minError_contrib = defaultdict(Contribution)
                     for relation in self.relations[i]:
                         minError_contrib[relation] = Contribution(self.device, self.nSteps)
@@ -346,62 +347,111 @@ class ASMCDD(torch.nn.Module):
                         minError_val = np.inf
                         minError_i = 0
                         minError_j = 0
-                        # minError_contrib = defaultdict(Contribution)
-                        # for relation in self.relations[i]:
-                        #     minError_contrib[relation] = Contribution(self.device, self.nSteps)
-                        currentError = 0
-                        for ni in range(1, N_I):
-                            for nj in range(1, N_J):
-                                gx = 1 / N_I * ni
-                                gy = 1 / N_J * nj
-                                cell_test = [gx, gy, output_disks_radii[n_accepted]]
-                                # if min_x > gx > max_x or min_y > gy > max_y:
-                                #     continue
-                                cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
+                        minError_x = 0.0
+                        minError_y = 0.0
 
-                                currentError = 0
-                                current_contrib = defaultdict(Contribution)
+                        for p in grid_points:
+                            gx, gy = p
+                            # gx = 1 / N_I * ni
+                            # gy = 1 / N_J * nj
+                            cell_test = [gx, gy, output_disks_radii[n_accepted]]
+                            # if min_x > gx > max_x or min_y > gy > max_y:
+                            #     continue
+                            cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
+
+                            currentError = 0
+                            current_contrib = defaultdict(Contribution)
+                            for relation in self.relations[i]:
+                                current_contrib[relation] = Contribution(self.device, self.nSteps)
+
+                            for relation in self.relations[i]:
+                                # test_pcf = Contribution(self.device, self.nSteps)
+                                same_category = False
+                                if relation == i:
+                                    same_category = True
+                                if same_category:
+                                    target_size = output_disks_radii.shape[0] * output_disks_radii.shape[0]
+                                else:
+                                    target_size = output_disks_radii.shape[0] * len(others[relation])
+
+                                others_rel_torch = torch.stack(others[relation], 0)  # torch.Tensor: [N, 3]
+                                weights_rel_torch = torch.stack(weights[relation], 0)
+                                # print(cell_test.shape, others_rel_torch.shape, weights_rel_torch.shape, same_category)
+                                test_pcf = compute_contribution(self.device, self.nSteps, cell_test,
+                                                                others_rel_torch,
+                                                                weights_rel_torch, cur_pcf_model, same_category,
+                                                                target_size, diskfact)
+                                ce = compute_error(test_pcf, current_pcf[relation],
+                                                   self.target_pcfs[i][relation])
+                                currentError = max(ce, currentError)
+                                current_contrib[relation] = test_pcf
+
+                            # print(currentError)
+                            if currentError < minError_val:
+                                minError_val = currentError
+                                minError_x = gx
+                                minError_j = gy
                                 for relation in self.relations[i]:
-                                    current_contrib[relation] = Contribution(self.device, self.nSteps)
+                                    minError_contrib[relation].pcf = current_contrib[relation].pcf.clone()
+                                    minError_contrib[relation].weights = current_contrib[relation].weights.clone()
+                                    minError_contrib[relation].contribution = current_contrib[
+                                        relation].contribution.clone()
 
-                                for relation in self.relations[i]:
-                                    # test_pcf = Contribution(self.device, self.nSteps)
-                                    same_category = False
-                                    if relation == i:
-                                        same_category = True
-                                    if same_category:
-                                        target_size = output_disks_radii.shape[0] * output_disks_radii.shape[0]
-                                    else:
-                                        target_size = output_disks_radii.shape[0] * len(others[relation])
-
-                                    others_rel_torch = torch.stack(others[relation], 0)  # torch.Tensor: [N, 3]
-                                    weights_rel_torch = torch.stack(weights[relation], 0)
-                                    # print(cell_test.shape, others_rel_torch.shape, weights_rel_torch.shape, same_category)
-                                    test_pcf = compute_contribution(self.device, self.nSteps, cell_test,
-                                                                    others_rel_torch,
-                                                                    weights_rel_torch, cur_pcf_model, same_category,
-                                                                    target_size, diskfact)
-                                    ce = compute_error(test_pcf, current_pcf[relation],
-                                                       self.target_pcfs[i][relation])
-                                    currentError = max(ce, currentError)
-                                    current_contrib[relation] = test_pcf
-
-                                # print(currentError)
-                                if currentError < minError_val:
-                                    minError_val = currentError
-                                    minError_i = ni
-                                    minError_j = nj
-                                    for relation in self.relations[i]:
-                                        minError_contrib[relation].pcf = current_contrib[relation].pcf.clone()
-                                        minError_contrib[relation].weights = current_contrib[relation].weights.clone()
-                                        minError_contrib[relation].contribution = current_contrib[
-                                            relation].contribution.clone()
+                        # for ni in range(1, N_I):
+                        #     for nj in range(1, N_J):
+                        #         gx = 1 / N_I * ni
+                        #         gy = 1 / N_J * nj
+                        #         cell_test = [gx, gy, output_disks_radii[n_accepted]]
+                        #         # if min_x > gx > max_x or min_y > gy > max_y:
+                        #         #     continue
+                        #         cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
+                        #
+                        #         currentError = 0
+                        #         current_contrib = defaultdict(Contribution)
+                        #         for relation in self.relations[i]:
+                        #             current_contrib[relation] = Contribution(self.device, self.nSteps)
+                        #
+                        #         for relation in self.relations[i]:
+                        #             # test_pcf = Contribution(self.device, self.nSteps)
+                        #             same_category = False
+                        #             if relation == i:
+                        #                 same_category = True
+                        #             if same_category:
+                        #                 target_size = output_disks_radii.shape[0] * output_disks_radii.shape[0]
+                        #             else:
+                        #                 target_size = output_disks_radii.shape[0] * len(others[relation])
+                        #
+                        #             others_rel_torch = torch.stack(others[relation], 0)  # torch.Tensor: [N, 3]
+                        #             weights_rel_torch = torch.stack(weights[relation], 0)
+                        #             # print(cell_test.shape, others_rel_torch.shape, weights_rel_torch.shape, same_category)
+                        #             test_pcf = compute_contribution(self.device, self.nSteps, cell_test,
+                        #                                             others_rel_torch,
+                        #                                             weights_rel_torch, cur_pcf_model, same_category,
+                        #                                             target_size, diskfact)
+                        #             ce = compute_error(test_pcf, current_pcf[relation],
+                        #                                self.target_pcfs[i][relation])
+                        #             currentError = max(ce, currentError)
+                        #             current_contrib[relation] = test_pcf
+                        #
+                        #         # print(currentError)
+                        #         if currentError < minError_val:
+                        #             minError_val = currentError
+                        #             minError_i = ni
+                        #             minError_j = nj
+                        #             for relation in self.relations[i]:
+                        #                 minError_contrib[relation].pcf = current_contrib[relation].pcf.clone()
+                        #                 minError_contrib[relation].weights = current_contrib[relation].weights.clone()
+                        #                 minError_contrib[relation].contribution = current_contrib[
+                        #                     relation].contribution.clone()
 
                         # finally outside grid search, then add random x, y offsets within a grid
                         x_offset = (np.random.rand() * 1 - 1 / 2) / (N_I * 10)
                         y_offset = (np.random.rand() * 1 - 1 / 2) / (N_J * 10)
-                        cell_test = [1 / N_I * minError_i + x_offset,
-                                     1 / N_J * minError_j + y_offset,
+                        # cell_test = [1 / N_I * minError_i + x_offset,
+                        #              1 / N_J * minError_j + y_offset,
+                        #              output_disks_radii[n_accepted]]
+                        cell_test = [minError_x + x_offset,
+                                     minError_y + y_offset,
                                      output_disks_radii[n_accepted]]
                         cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
                         others[i].append(cell_test)
@@ -425,7 +475,7 @@ class ASMCDD(torch.nn.Module):
             current_output = torch.stack(others[category_i], 0)
             model_refine = Refiner(self.device, self.opt, current_output).to(self.device)
             optimizer = torch.optim.Adam(model_refine.parameters(), lr=1e-4)
-            n_iter = 10
+            n_iter = 0
             start_time = time()
             for itr in range(1, n_iter + 1):
                 cur_all_outputs = []

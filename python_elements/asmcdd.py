@@ -215,9 +215,10 @@ class ASMCDD(torch.nn.Module):
             output_disks_radii = target_disks[:, 0, -1].repeat(n_repeat)
             # print(output_disks_radii.shape)
             _, idx = torch.sort(output_disks_radii, descending=True)
-            print(idx.shape, len(self.categories_radii_ratio[i]), idx.detach().cpu().numpy().shape)
-            print(list(idx.detach().cpu().numpy()))
-            self.output_radii_ratio[i][:] = self.categories_radii_ratio[i][list(idx.detach().cpu().numpy())]
+
+            radii_ratio_sorted = torch.from_numpy(np.array(self.categories_radii_ratio[i]))[idx]
+            self.output_radii_ratio[i] = list(radii_ratio_sorted.detach().cpu().numpy())
+
 
             output_disks_radii = target_disks.repeat(n_repeat, 1, 1)[idx]
             # print(output_disks_radii.shape)
