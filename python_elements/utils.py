@@ -101,7 +101,7 @@ def multiSphereDistance(a, b, rmax):
             d_max.append(d_1toothers)
         d_max = torch.stack(d_max, 1)
         # print(d_max.shape)
-        d = torch.max(d_max, 1)[0]
+        d = torch.min(d_max, 1)[0]
         # print(d.shape)
     return d
 
