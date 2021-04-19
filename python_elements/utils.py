@@ -179,33 +179,30 @@ def toroidalWrapAround(points, domain_size=1):
 
 
 def getSamplesFromImage_helper(coord, samples_per_element):
-    coord_sample1 = farthest_point_sample(coord, npoint=1024)
+    sample_spheres = []
+    # coord_sample1 = farthest_point_sample(coord, npoint=1024)
+    coord_sample1 = coord
     if samples_per_element > 1:
         coord_sample2 = farthest_point_sample(coord_sample1, npoint=samples_per_element)
-    else:
-        coord_sample2 = np.expand_dims(np.mean(coord_sample1, 0), 0)
-    # sample_center = np.mean(coord_sample2, 0)
-    # plt.figure(1)
-    # plt.scatter(coord_sample1[:, 0], coord_sample1[:, 1], c='r', s=2)
-    # plt.scatter(coord_sample2[:, 0], coord_sample2[:, 1], c='b', s=20)
-    # plt.show()
-
-    kmeans = KMeans(n_clusters=samples_per_element, init=coord_sample2, n_init=1, max_iter=1).fit(coord_sample2)
-    pred_sample1 = kmeans.predict(coord_sample1)
-
-    sample_spheres = []
-
-    if samples_per_element == 1:
-        actual = smallestenclosingcircle.make_circle(coord_sample1)
-        x, y, r = actual
-        sample_spheres.append([x, y, r])
-    else:
+        kmeans = KMeans(n_clusters=samples_per_element, init=coord_sample2, n_init=1, max_iter=1).fit(coord_sample2)
+        pred_sample1 = kmeans.predict(coord_sample1)
+        # print('here')
         for s in range(samples_per_element):
             idx = pred_sample1 == s
             cur_s = coord_sample1[idx]
             actual = smallestenclosingcircle.make_circle(cur_s)
             x, y, r = actual
             sample_spheres.append([x, y, r])
+    else:
+        # coord_sample2 = np.expand_dims(np.mean(coord_sample1, 0), 0)
+        actual = smallestenclosingcircle.make_circle(coord)
+        x, y, r = actual
+        sample_spheres.append([x, y, r])
+    # sample_center = np.mean(coord_sample2, 0)
+    # plt.figure(1)
+    # plt.scatter(coord_sample1[:, 0], coord_sample1[:, 1], c='r', s=2)
+    # plt.scatter(coord_sample2[:, 0], coord_sample2[:, 1], c='b', s=20)
+    # plt.show()
 
     sample_spheres = np.array(sample_spheres)
     # sample_spheres_copy = sample_spheres.copy()

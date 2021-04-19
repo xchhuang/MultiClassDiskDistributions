@@ -16,6 +16,7 @@ import utils
 import copy
 from graphlib import TopologicalSorter
 from refiner import Refiner
+import renderer
 
 
 # np.random.seed(0)
@@ -44,12 +45,13 @@ def get_weights(disks, cur_pcf_model, diskfact):
 
 
 class ASMCDD(torch.nn.Module):
-    def __init__(self, device, opt, categories, categories_elem, relations):
+    def __init__(self, device, opt, categories, categories_elem, categories_radii_ratio, elements, relations):
         super(ASMCDD, self).__init__()
         self.device = device
         self.opt = opt
         self.categories = categories
         self.categories_elem = categories_elem
+        self.categories_radii_ratio = categories_radii_ratio
         self.relations = relations
         self.nSteps = opt.nSteps
         self.sigma = opt.sigma
@@ -64,17 +66,20 @@ class ASMCDD(torch.nn.Module):
         self.target_pcfs = defaultdict(dict)
         self.computeTarget()
         self.outputs = []
-
+        self.output_radii_ratio = defaultdict(list)
 
         utils.plot_elements(categories.keys(), self.target, self.opt.output_folder + '/target_elements')
 
-
         self.plot_pretty_pcf(self.target, self.target, self.relations)
+
+        renderer.render(self.target, self.categories_radii_ratio, elements, self.opt.output_folder+'/target_render')
 
         self.initialize(domainLength=opt.domainLength)
 
         self.plot_pretty_pcf(self.target, self.outputs, self.relations)
         utils.plot_elements(self.topological_order, self.outputs, self.opt.output_folder + '/output_elements')
+
+        renderer.render(self.outputs, self.output_radii_ratio, elements, self.opt.output_folder+'/output_render')
 
     def computeTarget(self):
         n_classes = len(self.target)
@@ -157,7 +162,8 @@ class ASMCDD(torch.nn.Module):
                 pretty_pcf_model = PrettyPCF(self.device, nbbins=self.opt.nSteps, sigma=0.25,
                                              npoints=len(exemplar_disks), n_rmax=5).to(self.device)
 
-                exemplar_pcf_mean = pretty_pcf_model(exemplar_disks[:, 0, :], exemplar_parent_disks[:, 0, :], same_category)
+                exemplar_pcf_mean = pretty_pcf_model(exemplar_disks[:, 0, :], exemplar_parent_disks[:, 0, :],
+                                                     same_category)
                 output_pcf_mean = pretty_pcf_model(output_disks[:, 0, :], output_parent_disks[:, 0, :], same_category)
 
                 # self.pcf_model[category_i][category_j] = pretty_pcf_model
@@ -170,7 +176,8 @@ class ASMCDD(torch.nn.Module):
                          'g-')
                 plt.legend(['exemplar', 'output'])
                 plt.savefig(
-                    self.opt.output_folder + '/{:}_point_pcf_{:}_{:}'.format(self.opt.scene_name, category_i, category_j))
+                    self.opt.output_folder + '/{:}_point_pcf_{:}_{:}'.format(self.opt.scene_name, category_i,
+                                                                             category_j))
                 plt.clf()
         print('===> Plot Pretty PCF, Done.')
 
@@ -208,27 +215,29 @@ class ASMCDD(torch.nn.Module):
             output_disks_radii = target_disks[:, 0, -1].repeat(n_repeat)
             # print(output_disks_radii.shape)
             _, idx = torch.sort(output_disks_radii, descending=True)
-            # print(idx.shape)
-            # output_disks_radii = output_disks_radii[idx]
+            print(idx.shape, len(self.categories_radii_ratio[i]), idx.detach().cpu().numpy().shape)
+            print(list(idx.detach().cpu().numpy()))
+            self.output_radii_ratio[i][:] = self.categories_radii_ratio[i][list(idx.detach().cpu().numpy())]
 
             output_disks_radii = target_disks.repeat(n_repeat, 1, 1)[idx]
             # print(output_disks_radii.shape)
             # print(output_disks_radii[:, 0, -1])
             output_disks_radii[:, :, -1] /= domainLength
             c = output_disks_radii[:, 0, 0:2]
-            output_disks_radii[:, :, 0:2] -= c.unsqueeze(1).repeat(1, self.opt.samples_per_element+1, 1)
+            output_disks_radii[:, :, 0:2] -= c.unsqueeze(1).repeat(1, self.opt.samples_per_element + 1, 1)
             # print(c.shape, output_disks_radii[:, :, 0:2].shape)
             # print(output_disks_radii[:, 0, -1])
-            out = defaultdict(list)
-            out[0] = output_disks_radii
-            utils.plot_elements([0], out, self.opt.output_folder + '/test_{:}'.format(i))
+            # out = defaultdict(list)
+            # out[0] = output_disks_radii
+            # utils.plot_elements([0], out, self.opt.output_folder + '/test_{:}'.format(i))
 
             # init
             # print(i, self.relations[i])
             current_pcf = defaultdict(list)
             contributions = defaultdict(Contribution)
             weights = defaultdict(list)
-            cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=self.sigma, npoints=len(target_disks), n_rmax=5).to(
+            cur_pcf_model = PCF(self.device, nbbins=self.nSteps, sigma=self.sigma, npoints=len(target_disks),
+                                n_rmax=5).to(
                 self.device)
 
             for relation in self.relations[i]:

@@ -23,13 +23,18 @@ def main():
             line = line.strip().split(' ')
             line = [int(x) for x in line]
             c, x, y, r = line
-            if r / 10000.0 > 0.01:  # filter small radii, which are not seen properly
+            if r / 10000.0 > 0.008:  # filter small radii, which are not seen properly
                 # print(r / 10000.0)
                 k = id_map[c]
                 k = np.random.choice(target_num_classes)
                 disks.append([k, x / 10000.0, y / 10000.0, r / 10000.0])
 
     disks = np.array(disks)
+    scale_ratio = 1.15
+    disks_norm = disks[:, 1:3] - 0.5
+    disks_norm *= scale_ratio
+    disks[:, 1:3] = disks_norm + 0.5
+    disks[:, 3] *= scale_ratio*1.1
     # fig, ax = plt.subplots()
     # for i in range(disks.shape[0]):
     #     circle = plt.Circle((disks[i, 1], disks[i, 2]), disks[i, 3], color=colors_dict[disks[i, 0]], fill=False)

@@ -19,7 +19,7 @@ from refiner import Refiner
 
 
 class Trainer:
-    def __init__(self, device, opt, categories, categories_elem, relations):
+    def __init__(self, device, opt, categories, categories_elem, categories_radii_ratio, elements, relations):
         super(Trainer, self).__init__()
         self.device = device
         self.opt = opt
@@ -28,7 +28,7 @@ class Trainer:
         self.target_pcfs = defaultdict(dict)
 
         # if not opt.refine:  # initialization via Metropolis Hastings sampling
-        ASMCDD(device, opt, categories, categories_elem, relations)
+        ASMCDD(device, opt, categories, categories_elem, categories_radii_ratio, elements, relations)
         # else:  # refine via gradient descent
         #     self.refine(categories, relations)
 

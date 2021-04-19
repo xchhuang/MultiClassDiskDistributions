@@ -44,11 +44,12 @@ def load_elements(categories):
     path_prefix = './elements'
     elements = []
     for filename in filenames:
-        im = Image.open(path_prefix + '/' + filename + '.png').convert('RGBA')
+        im = Image.open(path_prefix + '/' + filename + '.png').convert('RGB')
         elements.append(im)
     # print(len(elements))
     # categories_img = []
     categories_elem = defaultdict(list)
+    categories_radii_ratio = defaultdict(list)
     for k in categories.keys():  # assume number of classes is equal to number of elements type
         im = elements[k]
         im = im.resize((img_res, img_res), resample=Image.LANCZOS)
@@ -56,10 +57,12 @@ def load_elements(categories):
         sample_spheres = utils.getSamplesFromImage(im, opt.samples_per_element)
         # print(sample_spheres.shape)
         for e in categories[k]:
-            rotate_factor = 0  # np.random.rand() * 2 * np.pi    # random angle to rotate
+            rotate_factor = 0   # np.random.rand() * 2 * np.pi    # random angle to rotate
 
             cur_sample_sphere = sample_spheres.copy()
             ratio = sample_spheres[0, 2] / e[2]
+            categories_radii_ratio[k].append(ratio)
+            # print('ratio:', sample_spheres[0, 2], e[2])
             cur_sample_sphere[0] = e    # center, the same
             # cur_sample_sphere[0, 0:2] = e[0:2]
             cur_sample_sphere[1:, 0:3] /= ratio     # sample_spheres need to be scaled and rotated
@@ -75,7 +78,7 @@ def load_elements(categories):
             categories_elem[k].append(cur_sample_sphere)
     # print(len(categories_elem[0]), categories_elem[0][0].shape)
     # utils.plot_elements(categories_elem.keys(), categories_elem, opt.output_folder+'/target_elements')
-    return categories_elem, elements
+    return categories_elem, categories_radii_ratio, elements
 
 
 def main():
@@ -130,9 +133,9 @@ def main():
         for k in categories.keys():
             print('#Disk of class {:} {:}, their parents {:}'.format(k, len(categories[k]), relations[k]))
 
-        categories_elem, elements = load_elements(categories)
-        renderer.render(categories_elem, elements)
-        # Trainer(device, opt, categories, categories_elem, relations)
+        categories_elem, categories_radii_ratio, elements = load_elements(categories)
+        # renderer.render(categories_elem, categories_radii_ratio, elements)
+        Trainer(device, opt, categories, categories_elem, categories_radii_ratio, elements, relations)
 
 
 if __name__ == "__main__":
