@@ -76,7 +76,7 @@ def multiSphereDistance(a, b, rmax):
     """
     # print('multiSphereDistance')
     use_center = False
-    dist_type = 'mean-min'
+    dist_type = 'min-min'
     N, M, D = a.shape
     d_norm = []
     if use_center:
