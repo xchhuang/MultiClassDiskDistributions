@@ -21,7 +21,7 @@ sys.path.append('../')
 # device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 device = torch.device('cpu')  # seems cpu is faster
 # command
-# python main.py --config_filename=configs/zerg_rush.txt
+# python main.py --config_filename=configs/first.txt
 
 np.random.seed(2)   # interesting example
 parser = argparse.ArgumentParser()
