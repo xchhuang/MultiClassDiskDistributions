@@ -423,10 +423,13 @@ class ASMCDD(torch.nn.Module):
                         # finally outside grid search, then add random x, y offsets within a grid
                         x_offset = (np.random.rand() * 1 - 1 / 2) / (N_I * 10)
                         y_offset = (np.random.rand() * 1 - 1 / 2) / (N_J * 10)
-                        cell_test = [1 / N_I * minError_i + x_offset,
-                                     1 / N_J * minError_j + y_offset,
-                                     output_disks_radii[n_accepted]]
-                        cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
+                        # cell_test = [1 / N_I * minError_i + x_offset,
+                        #              1 / N_J * minError_j + y_offset,
+                        #              output_disks_radii[n_accepted]]
+                        cell_test = output_disks_radii[n_accepted].clone()
+                        cell_test[:, 0] += 1 / N_I * minError_i + x_offset
+                        cell_test[:, 1] += 1 / N_J * minError_j + y_offset
+                        # cell_test = torch.from_numpy(np.array(cell_test)).float().to(self.device)
                         others[i].append(cell_test)
 
                         for relation in self.relations[i]:

@@ -3,15 +3,16 @@ import torch
 from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
 from skimage.transform import rescale, resize, downscale_local_mean
+from tqdm import tqdm
 
 
 def render(categories_elem, categories_radii_ratio, categories_rotate, elements, save_filename):
-    print('render')
+    print('===> Rendering...')
     res = 512
     vis_img = np.ones((res, res, 3))
     fig, ax = plt.subplots()
     # for k in categories_elem.keys():  # assume number of classes is equal to number of elements type
-    for k in range(len(categories_elem)):  # assume number of classes is equal to number of elements type
+    for k in tqdm(range(len(categories_elem))):  # assume number of classes is equal to number of elements type
         for l in range(len(categories_elem[k])):
             e = categories_elem[k][l].detach().cpu().numpy()
             # ratio = 0.5 / e[0, 2]
@@ -20,7 +21,9 @@ def render(categories_elem, categories_radii_ratio, categories_rotate, elements,
             im = elements[k]
             # im = im.resize((int(res / ratio), int(res / ratio)), resample=Image.LANCZOS)
             im = np.asarray(im) / 255.0
-
+            # plt.figure(1)
+            # plt.imshow(im)
+            # plt.show()
             im = np.where(im == [0, 0, 0], 1, im)
 
             # im = resize(im, (int(res / ratio), int(res / ratio), 3), order=0, preserve_range=True)

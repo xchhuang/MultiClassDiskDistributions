@@ -75,8 +75,8 @@ def multiSphereDistance(a, b, rmax):
     :return: Max-Min version of hausdorff distance
     """
     # print('multiSphereDistance')
-    use_center = False
-    dist_type = 'min-min'
+    use_center = True
+    dist_type = 'mean-min'
     N, M, D = a.shape
     d_norm = []
     if use_center:
