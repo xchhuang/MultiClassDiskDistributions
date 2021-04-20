@@ -23,7 +23,7 @@ device = torch.device('cpu')  # seems cpu is faster
 # command
 # python main.py --config_filename=configs/first.txt
 
-np.random.seed(1)   # interesting example
+# np.random.seed(1)   # interesting example
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.txt', help='config file name')
 parser.add_argument('--refine', action='store_true')

@@ -276,11 +276,11 @@ class ASMCDD(torch.nn.Module):
                 # else:
                 rx = np.random.rand()  # * domainLength
                 ry = np.random.rand()  # * domainLength
-                # if i == 0:
-                #     min_xy = 0.09
-                #     rx = min_xy + np.random.rand() * (domainLength - min_xy * 2)  # my version
-                #     ry = min_xy + np.random.rand() * (domainLength - min_xy * 2)
-                # print(rx, ry)
+                if i == 0:
+                    min_xy = 0.09
+                    rx = min_xy + np.random.rand() * (domainLength - min_xy * 2)  # my version
+                    ry = min_xy + np.random.rand() * (domainLength - min_xy * 2)
+                    # print(rx, ry)
                 # print(output_disks_radii[n_accepted].shape)
                 d_test = output_disks_radii[n_accepted].clone()
                 d_test[:, 0] += rx
