@@ -76,8 +76,9 @@ def multiSphereDistance(a, b, rmax):
     """
     # print('multiSphereDistance')
     use_center = False
+    dist_type = 'mean-min'
     N, M, D = a.shape
-    d_max = []
+    d_norm = []
     if use_center:
         b = b[:, 0:1, :]
         b = b.contiguous().view(-1, D)
@@ -85,25 +86,36 @@ def multiSphereDistance(a, b, rmax):
         for k in range(0, 1):  # first is centroid sphere
             cur_a = a[:, k, :].repeat(1, 1)
             d_1toothers = diskDistance(cur_a, b, rmax)
-            d_1toothers = torch.min(d_1toothers.view(N, 1), 1)[0]
-            d_max.append(d_1toothers)
-        d_max = torch.stack(d_max, 1)
-        # print(d_max.shape)
-        d = torch.max(d_max, 1)[0]
-        # print(d.shape)
+            # d_1toothers = torch.min(d_1toothers.view(N, 1), 1)[0]
+            d_norm.append(d_1toothers)
+        # d_norm = torch.stack(d_norm, 1)
+        d_norm = d_norm[0]
+        # print(d_norm.shape)
     else:
         b = b[:, 1:, :]
         b = b.contiguous().view(-1, D)
         for k in range(1, M):   # first is centroid sphere
             cur_a = a[:, k, :].repeat(M - 1, 1)
             d_1toothers = diskDistance(cur_a, b, rmax)
-            d_1toothers = torch.min(d_1toothers.view(N, M - 1), 1)[0]
-            d_max.append(d_1toothers)
-        d_max = torch.stack(d_max, 1)
+            if dist_type == 'max-min':
+                d_1toothers = torch.min(d_1toothers.view(N, M - 1), 1)[0]
+            if dist_type == 'min-min':
+                d_1toothers = torch.min(d_1toothers.view(N, M - 1), 1)[0]
+            if dist_type == 'mean-min':
+                d_1toothers = torch.min(d_1toothers.view(N, M - 1), 1)[0]
+            d_norm.append(d_1toothers)
+        d_norm = torch.stack(d_norm, 1)
         # print(d_max.shape)
-        d = torch.min(d_max, 1)[0]
-        # print(d.shape)
-    return d
+        if dist_type == 'max-min':
+            d_norm = torch.max(d_norm, 1)[0]
+        if dist_type == 'min-min':
+            d_norm = torch.min(d_norm, 1)[0]
+        if dist_type == 'mean-min':
+            # print(d_norm.shape)
+            d_norm = torch.mean(d_norm, 1)
+            # print(d_norm.shape)
+
+    return d_norm
 
 colors_dict = {
     0: 'r',
