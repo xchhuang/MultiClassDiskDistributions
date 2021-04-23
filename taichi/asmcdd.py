@@ -135,7 +135,7 @@ class ASMCDD:
     def get_weights(self):
         N = self.count_disks[self.cur_parent_id]     # global dict to count number of synthesized disks
         model = self.output_pcf_model[self.cur_parent_id][self.cur_parent_id]
-        print(N)
+
         print('before inside:', len(self.weights[self.cur_parent_id]))
         for _ in range(1):
             for ii in range(N):
