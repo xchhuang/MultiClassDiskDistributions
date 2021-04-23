@@ -48,17 +48,18 @@ class ASMCDD:
         self.nSteps = opt.nSteps
         self.sigma = opt.sigma
 
-        self.target_pcf_model = defaultdict(dict)
+        self.target_pcf_model = defaultdict(dict)   # PCF model, record area, radii, max, etc.
         self.output_pcf_model = defaultdict(dict)
-        self.output_disks_radii = defaultdict(list)
-        self.current_pcf = defaultdict(list)
-        self.contributions = defaultdict(Contribution)
-        self.weights = defaultdict(list)
+        self.target_pcf = defaultdict(list)     # PCFs, record pcfs of nSteps bins
+        self.output_disks_radii = defaultdict(list)     # sort radii for synthesis usage
+        self.current_pcf = defaultdict(list)    # tmp
+        self.contributions = defaultdict(Contribution)  # tmp
+        self.weights = defaultdict(list)    # tmp
 
-        self.count_disks = defaultdict(int)
-        self.d_test_ti = ti.field(dtype=ti.f32, shape=3)
-        self.test_pcf = Contribution(self.nSteps)
-        self.tmp_weight = ti.field(dtype=ti.f32, shape=self.nSteps)
+        self.count_disks = defaultdict(int)     # record number of disks already added
+        self.d_test_ti = ti.field(dtype=ti.f32, shape=3)    # tmp
+        self.test_pcf = Contribution(self.nSteps)   # tmp
+        self.tmp_weight = ti.field(dtype=ti.f32, shape=self.nSteps)     # tmp
 
         self.domainLength = opt.domainLength
         self.n_factor = self.domainLength * self.domainLength
@@ -67,11 +68,11 @@ class ASMCDD:
         self.cur_parent_id = 0
         self.n_repeat = math.ceil(self.n_factor)
 
-        max_num_disks = -np.inf
-        for i in categories.keys():
-            cur_num = len(categories[i])
-            if max_num_disks < cur_num:
-                max_num_disks = cur_num
+        # max_num_disks = -np.inf
+        # for i in categories.keys():
+        #     cur_num = len(categories[i])
+        #     if max_num_disks < cur_num:
+        #         max_num_disks = cur_num
 
         # define taichi fields in PCF_ti
         for i in categories.keys():
@@ -111,9 +112,7 @@ class ASMCDD:
         end = time()
         print('Time of computing target PCFs(taichi): {:.4f}'.format(end - start))
         # self.plot_pretty_pcf(self.target, self.target, self.relations)
-        return
 
-        return
         self.initialize(domainLength=opt.domainLength)
         #
         #
@@ -211,11 +210,6 @@ class ASMCDD:
         self.topological_order = topological_order
         print('topological_order:', topological_order)
 
-        # others = defaultdict(list)  # existing generated disks
-        # for i in topological_order:
-        #     others[i] = []
-        # print(topological_order)
-
         for i in topological_order:
 
             # TODO: those params should be defined inside the loop
@@ -233,23 +227,10 @@ class ASMCDD:
 
             for relation in self.relations[i]:
                 self.current_pcf[relation].from_numpy(np.zeros(self.nSteps))
-                # print(current_pcf.shape)
-                # others_disks = others[relation]
-                # # print(i, relation, others_disks)
-                # if len(others_disks) != 0:
-                #     others_disks = torch.stack(others_disks, 0)
-                # else:
-                #     others_disks = torch.from_numpy(np.array(others_disks)).float().to(self.device)
-                # # print(len(others_disks))
-                # current_weight = get_weights(others_disks, cur_pcf_model, self.diskfact)  # TODO: check, might be empty
-
                 self.cur_parent_id = relation
-                print('before:', len(self.weights[self.cur_parent_id]))
+                # print('before:', len(self.weights[self.cur_parent_id]))
                 self.get_weights()
                 self.contributions[relation].initialize()
-                print('after:', len(self.weights[relation]))
-                # self.weights[relation] = current_weight
-                # contributions[relation] = Contribution(self.device, self.nSteps)
 
             """
             Initialization step:
@@ -284,14 +265,10 @@ class ASMCDD:
                         else:
                             target_size = 2 * output_radii.shape[0] * self.count_disks[relation]
 
-                        # others_rel_torch = torch.stack(others[relation], 0)  # torch.Tensor: [N, 3]
-                        # weights_rel_torch = torch.stack(weights[relation], 0)
-                        # print(others_rel_torch.shape, weights_rel_torch.shape)
-                        # print(target_size)
 
-                        test_pcf = compute_contribution(self.device, self.nSteps, d_test, others_rel_torch,
-                                                        weights_rel_torch, cur_pcf_model, same_category,
-                                                        target_size, diskfact)
+                        # test_pcf = compute_contribution(self.device, self.nSteps, d_test, others_rel_torch,
+                        #                                 weights_rel_torch, cur_pcf_model, same_category,
+                        #                                 target_size, diskfact)
                         # if i == 1 and relation == 0:
                         #     print(n_accepted, test_pcf.contribution)
                         ce = compute_error(test_pcf, current_pcf[relation], self.target_pcfs[i][relation])
@@ -320,17 +297,16 @@ class ASMCDD:
                     self.count_disks[i] += 1
                     # print(self.count_disks[i])
                     # print(n_accepted, self.cur_parent_id)
-                    print(len(self.weights[relation]))
+                    # print(len(self.weights[relation]))
                     fails = 0
-                    # if i == 1:
-                    #     print('n_accepted:', n_accepted, d_test)
                     for relation in self.relations[i]:
                         current = self.current_pcf[relation]
                         contrib = self.contributions[relation]
                         if relation == i:
-                            # TODO: make self.weights a list
-                            self.weights[relation].append(contrib.weights)
-                            print(len(self.weights[relation]))
+                            pass
+                            # TODO: make self.weights a taichi field, instead of a list
+                            # self.weights[relation].append(contrib.weights)
+                            # print(len(self.weights[relation]))
                         # print(self.current_pcf[relation].shape, contrib.contribution.shape)
                         for k in range(self.nSteps):
                             self.current_pcf[relation][k] += contrib.contribution[k]

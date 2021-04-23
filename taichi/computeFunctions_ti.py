@@ -241,6 +241,7 @@ class PCF_ti:
                     self.pcf_min[k] = self.pcf_mean[k][1]
                 if self.pcf_max[k] < self.pcf_mean[k][1]:
                     self.pcf_max[k] = self.pcf_mean[k][1]
+
         for k in range(self.nbbins):
             self.pcf_mean[k][0] = self.rs_ti[k] / self.rmax
             self.pcf_mean[k][1] /= Na
