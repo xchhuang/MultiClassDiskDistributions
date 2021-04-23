@@ -91,6 +91,7 @@ class PCF_ti:
 
         n_factor = domainLength * domainLength
         npoints = int(npoints * domainLength)
+        self.npoints = npoints
         self.n_repeat = math.ceil(n_factor)
 
         # self.count_disks = ti.field(dtype=ti.i32, shape=())    # TODO: counter for current number of disks, for output disks only instead of targets
@@ -108,7 +109,9 @@ class PCF_ti:
         self.pcf_max = ti.field(dtype=ti.f32, shape=nbbins)
         self.rs_ti = ti.field(dtype=ti.f32, shape=nbbins)
         self.area_ti = ti.field(dtype=ti.f32, shape=nbbins)
-        self.weights_ti = ti.field(dtype=ti.f32, shape=nbbins)
+        # self.weights_ti = ti.field(dtype=ti.f32, shape=nbbins)
+        self.weights_ti = ti.field(dtype=ti.f32, shape=(npoints, nbbins))  # sacrifices space for parallel computation of PCF
+
         self.density = ti.field(dtype=ti.f32, shape=nbbins)
 
         self.domainLength = domainLength
@@ -133,10 +136,6 @@ class PCF_ti:
         rb = rs[-1]
         # print('PCF Parameters:', self.rmin, self.rmax, npoints)
 
-        # self.rs = torch.from_numpy(np.array(rs)).float().to(device)
-        # self.area = torch.from_numpy(np.array(area)).float().to(device)
-        # self.sigma = torch.from_numpy(np.array([sigma])).float().to(device)
-        # print('self.sigma:', self.sigma)
         self.sigma = sigma
         self.rs = rs
         self.area = area
@@ -149,59 +148,14 @@ class PCF_ti:
         self.disks_parent_ti.from_numpy(np.array(self.disks_parent).repeat(self.n_repeat, 0))
         self.pcf_min.from_numpy(np.ones(self.nbbins) * np.inf)
         self.pcf_max.from_numpy(np.ones(self.nbbins) * -np.inf)
-        self.weights_ti.from_numpy(np.zeros(self.nbbins))
-        self.weights_ti.from_numpy(np.zeros(self.nbbins))
+        # self.weights_ti.from_numpy(np.zeros(self.nbbins))
+        self.weights_ti.from_numpy(np.zeros((self.npoints, self.nbbins)))
         self.area_ti.from_numpy(np.array(self.area))
         self.rs_ti.from_numpy(np.array(self.rs))
 
     @ti.func
     def gaussianKernel(self, x):
         return self.gf * ti.exp(-((x * x) / (self.sigma * self.sigma)))
-
-    def perimeter_weight(self, x_, y_, diskfact=1):
-
-        full_angle = torch.ones(self.nbbins).float() * 2 * math.pi
-        full_angle = full_angle.to(self.device)
-        weights = torch.zeros_like(full_angle)
-        rs = self.rs * diskfact
-        # print(diskfact)
-        x = x_ * diskfact
-        y = y_ * diskfact
-        # rs *= diskfact
-
-        dx = x
-        dy = y
-        idx = rs > dx
-        if rs.size(0) > 0:
-            alpha = torch.acos(dx / rs[idx])
-            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx))
-
-        dx = 1 - x
-        dy = y
-        idx = rs > dx
-        if rs[idx].size(0) > 0:
-            alpha = torch.acos(dx / rs[idx])
-            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx))
-
-        dx = y
-        dy = x
-        idx = rs > dx
-        if rs[idx].size(0) > 0:
-            alpha = torch.acos(dx / rs[idx])
-            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx));
-
-        dx = 1 - y
-        dy = x
-        idx = rs > dx
-        if rs[idx].size(0) > 0:
-            alpha = torch.acos(dx / rs[idx])
-            full_angle[idx] -= torch.min(alpha, torch.atan2(dy, dx)) + torch.min(alpha, torch.atan2((1 - dy), dx))
-
-        perimeter = torch.clamp(full_angle / (2 * math.pi), 0, 1)
-        idx = perimeter > 0  # none zero
-        weights[idx] = 1 / perimeter[idx]
-        # weights = 1 / perimeter
-        return weights
 
     @ti.func
     def perimeter_weight_helper(self, dx, dy, r):
@@ -264,35 +218,32 @@ class PCF_ti:
     def forward(self):
         Na = self.disks_ti.shape[0]
         Nb = self.disks_parent_ti.shape[0]
-        for _ in range(1):      # TODO: force serialized
-            for i in range(Na):
-                pi = self.disks_ti[i]
-                for k in range(self.nbbins):
-                    self.weights_ti[k] = self.perimeter_weight_ti(pi[0], pi[1], self.rs_ti[k])
-                    self.density[k] = 0.0
-                for j in range(Nb):
-                    skip = False
-                    if self.same_category and i == j:
-                        skip = True
-                    if not skip:
-                        pj = self.disks_parent_ti[j]
-                        d = self.diskDistance(pi, pj)
-                        for k in range(self.nbbins):
-                            r = self.rs_ti[k] / self.rmax
-                            val = self.gaussianKernel(r - d)
-                            self.density[k] += val * self.weights_ti[k] / self.area_ti[k] / Nb
 
-                for k in range(self.nbbins):
-                    self.pcf_mean[k] += self.density[k]  # / Na
-                    # self.pcf_mean[k][0] = self.rs_ti[k] / self.rmax
-                    if self.pcf_min[k] > self.pcf_mean[k][1]:
-                        self.pcf_min[k] = self.pcf_mean[k][1]
-                    if self.pcf_max[k] < self.pcf_mean[k][1]:
-                        self.pcf_max[k] = self.pcf_mean[k][1]
+        # for _ in range(1):      # TODO: force serialized, seems no longer needed
+        for i in range(Na):
+            pi = self.disks_ti[i]
+            for k in range(self.nbbins):
+                self.weights_ti[i, k] = self.perimeter_weight_ti(pi[0], pi[1], self.rs_ti[k])
+            for j in range(Nb):
+                skip = False
+                if self.same_category and i == j:
+                    skip = True
+                if not skip:
+                    pj = self.disks_parent_ti[j]
+                    d = self.diskDistance(pi, pj)
+                    for k in range(self.nbbins):
+                        r = self.rs_ti[k] / self.rmax
+                        val = self.gaussianKernel(r - d)
+                        self.pcf_mean[k] += val * self.weights_ti[i, k] / self.area_ti[k] / Nb
 
             for k in range(self.nbbins):
-                self.pcf_mean[k][0] = self.rs_ti[k] / self.rmax
-                self.pcf_mean[k][1] /= Na
+                if self.pcf_min[k] > self.pcf_mean[k][1]:
+                    self.pcf_min[k] = self.pcf_mean[k][1]
+                if self.pcf_max[k] < self.pcf_mean[k][1]:
+                    self.pcf_max[k] = self.pcf_mean[k][1]
+        for k in range(self.nbbins):
+            self.pcf_mean[k][0] = self.rs_ti[k] / self.rmax
+            self.pcf_mean[k][1] /= Na
 
 
 

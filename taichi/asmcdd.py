@@ -111,7 +111,9 @@ class ASMCDD:
         end = time()
         print('Time of computing target PCFs(taichi): {:.4f}'.format(end - start))
         # self.plot_pretty_pcf(self.target, self.target, self.relations)
-        #
+        return
+
+        return
         self.initialize(domainLength=opt.domainLength)
         #
         #
@@ -317,7 +319,7 @@ class ASMCDD:
                     self.output_pcf_model[i][i].disks_ti[self.count_disks[i]] = d_test
                     self.count_disks[i] += 1
                     # print(self.count_disks[i])
-                    print(n_accepted, self.cur_parent_id)
+                    # print(n_accepted, self.cur_parent_id)
                     print(len(self.weights[relation]))
                     fails = 0
                     # if i == 1:
