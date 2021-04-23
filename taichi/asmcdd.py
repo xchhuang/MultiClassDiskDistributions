@@ -48,17 +48,19 @@ class ASMCDD:
         self.nSteps = opt.nSteps
         self.sigma = opt.sigma
 
-        self.target_pcf_model = defaultdict(dict)   # PCF model, record area, radii, max, etc.
+        self.target = []
+        self.output = []
+        self.target_pcf_model = defaultdict(dict)   # PCF model, [id][id_parent], record area, radii, max, etc.
         self.output_pcf_model = defaultdict(dict)
-        self.target_pcf = defaultdict(list)     # PCFs, record pcfs of nSteps bins
-        self.output_disks_radii = defaultdict(list)     # sort radii for synthesis usage
-        self.current_pcf = defaultdict(list)    # tmp
-        self.contributions = defaultdict(Contribution)  # tmp
-        self.weights = defaultdict(list)    # tmp
+        # self.target_pcf = defaultdict(list)     # PCFs, record pcfs of nSteps bins
+        self.output_disks_radii = defaultdict(list)     # [id][num_output_disks_of_id_class], sort radii for synthesis usage
+        self.current_pcf = defaultdict(list)    # [id_parent][nSteps]
+        self.contributions = defaultdict(Contribution)  # [id_parent][Contribution]
+        self.weights = defaultdict(list)    # [relation][num_output_disk, nSteps]
 
-        self.count_disks = defaultdict(int)     # record number of disks already added
-        self.d_test_ti = ti.field(dtype=ti.f32, shape=3)    # tmp
-        self.test_pcf = Contribution(self.nSteps)   # tmp
+        self.count_disks = defaultdict(int)     # [id], return number of disks already added
+        self.d_test_ti = ti.field(dtype=ti.f32, shape=3)    # [samplers_per_element, 3]
+        self.test_pcf = Contribution(self.nSteps)   # [Contribution]
         self.tmp_weight = ti.field(dtype=ti.f32, shape=self.nSteps)     # tmp
 
         self.domainLength = opt.domainLength
@@ -68,14 +70,18 @@ class ASMCDD:
         self.cur_parent_id = 0
         self.n_repeat = math.ceil(self.n_factor)
 
-        # max_num_disks = -np.inf
-        # for i in categories.keys():
-        #     cur_num = len(categories[i])
-        #     if max_num_disks < cur_num:
-        #         max_num_disks = cur_num
+        max_num_disks = -np.inf
+        for i in categories.keys():
+            if max_num_disks < len(categories[i]):
+                max_num_disks = len(categories[i])
 
         # define taichi fields in PCF_ti
         for i in categories.keys():
+            x = np.array(categories[i])
+            if opt.samples_per_element:
+                x = np.expand_dims(x, 1)
+            self.target.append(ti.field(dtype=ti.f32, shape=x.shape))
+            self.output.append(ti.field(dtype=ti.f32, shape=(x.shape[0]*self.n_repeat, x.shape[1], x.shape[2])))
             self.output_disks_radii[i] = ti.field(dtype=ti.f32, shape=len(self.categories[i])*self.n_repeat)
             self.current_pcf[i] = ti.field(dtype=ti.f32, shape=self.nSteps)
             self.contributions[i] = Contribution(self.nSteps)
@@ -95,6 +101,11 @@ class ASMCDD:
 
         # initialize taichi fields inside pcf_model_ti
         for i in categories.keys():
+            x = np.array(categories[i])
+            if opt.samples_per_element:
+                x = np.expand_dims(x, 1)
+            self.target[i].from_numpy(x)
+            self.output[i].from_numpy(np.zeros_like(x))
             cur_tar_disks = np.array(self.categories[i])
             radii = cur_tar_disks[:, -1].repeat(self.n_repeat) / self.domainLength
             radii = np.sort(radii)[::-1]
@@ -112,7 +123,7 @@ class ASMCDD:
         end = time()
         print('Time of computing target PCFs(taichi): {:.4f}'.format(end - start))
         # self.plot_pretty_pcf(self.target, self.target, self.relations)
-
+        return
         self.initialize(domainLength=opt.domainLength)
         #
         #
