@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import math
 import utils
+from time import time
+
+ti.init(ti.cpu)
 
 
 @ti.data_oriented
@@ -32,7 +35,9 @@ class Solver:
         self.sigma = opt.sigma
         self.domainLength = opt.domainLength
         self.samples_per_element = opt.samples_per_element
-
+        self.n_rmax = 5
+        self.step_size = self.n_rmax / self.nSteps
+        self.num_classes = len(categories.keys())
         max_num_disks = -np.inf
         for i in categories.keys():
             if max_num_disks < len(categories[i]):
@@ -44,8 +49,12 @@ class Solver:
         self.target_pcf_mean = defaultdict(dict)  # [id][id_parent][nSteps]
         self.target_pcf_min = defaultdict(dict)
         self.target_pcf_max = defaultdict(dict)
-        self.output_disks_radii = defaultdict(
-            list)  # [id][num_output_disks_of_id_class], sort radii for synthesis usage
+        self.target_pcf_radii = defaultdict(dict)
+        self.target_pcf_rmax = defaultdict(dict)
+        self.target_pcf_area = defaultdict(dict)
+        self.target_pcf_count = defaultdict(dict)
+
+        self.output_disks_radii = defaultdict(list)  # [id][num_out_disks_of_idclass], sort radii for synthesis
         self.current_pcf = defaultdict(list)  # [id_parent][nSteps]
         self.contributions = defaultdict(Contribution)  # [id_parent][Contribution]
         self.weights = defaultdict(list)  # [relation][num_output_disk, nSteps]
@@ -57,7 +66,7 @@ class Solver:
         self.domainLength = opt.domainLength
         self.n_factor = self.domainLength * self.domainLength
         self.diskfact = 1
-        self.cur_id = 0
+        self.cur_id =
         self.cur_parent_id = 0
         self.n_repeat = math.ceil(self.n_factor)
 
@@ -77,6 +86,10 @@ class Solver:
                 self.target_pcf_mean[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
                 self.target_pcf_min[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
                 self.target_pcf_max[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
+                self.target_pcf_count[i][j] = Nk
+                self.target_pcf_rmax[i][j] = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * Nk))
+                self.target_pcf_radii[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
+                self.target_pcf_area[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
 
         for i in categories.keys():
             x = np.array(categories[i])
@@ -97,27 +110,36 @@ class Solver:
                 self.target_pcf_mean[i][j].from_numpy(np.zeros(self.nSteps))
                 self.target_pcf_min[i][j].from_numpy(np.ones(self.nSteps) * np.inf)
                 self.target_pcf_max[i][j].from_numpy(np.ones(self.nSteps) * -np.inf)
+                for k in range(self.nSteps):
+                    radii = (i + 1) * self.step_size * self.target_pcf_rmax[i][j]
+                    self.target_pcf_radii[i][j][k] = radii
+                    inner = max(0, radii - 0.5 * self.target_pcf_rmax[i][j])
+                    outer = radii + 0.5 * self.target_pcf_rmax[i][j]
+                    self.target_pcf_area[i][j][k] = math.pi * (outer * outer - inner * inner)
 
-    @ti.kernel
-    def compute_pcf(self):
-        pass
+        start = time()
+        self.compute_target_pcf()
+        end = time()
+        print('Time for computeTarget {:.4f}s.'.format(end - start))
 
-    def computeTarget(self):
-        # n_classes = len(self.target)
-        # print('relations:', self.relations)
+    # @ti.kernel
+    def compute_target_pcf_kernel(self):
+        print(self.cur_id, self.cur_parent_id)
+
+    def compute_target_pcf(self):
         for i in self.categories.keys():
             # target_disks = self.target[i]
             for j in self.relations[i]:
-                self.target_pcf_model[i][j].forward()
-                # self.output_pcf_model[i][j].forward()
-
-                cur_pcf_mean = self.target_pcf_model[i][j].pcf_mean.to_numpy()
-                # cur_pcf_mean2 = self.output_pcf_model[i][j].pcf_mean.to_numpy()
-
-                plt.plot(cur_pcf_mean[:, 0], cur_pcf_mean[:, 1])
-                # print(cur_pcf_mean[:, 1])
-                plt.savefig(
-                    self.opt.output_folder + '/{:}_pcf_{:}_{:}'.format(self.opt.scene_name, i, j))
-                plt.clf()
-                return
-        print('===> computeTarget Done.')
+                self.cur_id = i
+                self.cur_parent_id = j
+                print(self.cur_id, self.cur_parent_id)
+                self.compute_target_pcf_kernel()
+                # cur_pcf_mean = self.target_pcf_model[i][j].pcf_mean.to_numpy()
+                # # cur_pcf_mean2 = self.output_pcf_model[i][j].pcf_mean.to_numpy()
+                #
+                # plt.plot(cur_pcf_mean[:, 0], cur_pcf_mean[:, 1])
+                # # print(cur_pcf_mean[:, 1])
+                # plt.savefig(
+                #     self.opt.output_folder + '/{:}_pcf_{:}_{:}'.format(self.opt.scene_name, i, j))
+                # plt.clf()
+                # return
