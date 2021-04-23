@@ -38,13 +38,52 @@ class Solver:
         self.n_rmax = 5
         self.step_size = self.n_rmax / self.nSteps
         self.num_classes = len(categories.keys())
+        self.total_samples_per_element = self.samples_per_element + 1
+
+        graph, topological_order = utils.topologicalSort(len(self.categories.keys()), self.relations)
+        print('topological_order:', topological_order)
+
         max_num_disks = -np.inf
+        total_num_disks = 0
         for i in categories.keys():
-            if max_num_disks < len(categories[i]):
-                max_num_disks = len(categories[i])
+            l = len(categories[i])
+            total_num_disks += l
+            if max_num_disks < l:
+                max_num_disks = l
 
         # define taichi fields
-        self.target = defaultdict(list)
+        # samples_per_element + the center disk
+        self.target = ti.field(dtype=ti.f32, shape=(total_num_disks * self.total_samples_per_element * 3))
+        self.id2num = ti.field(dtype=ti.i32, shape=self.num_classes)
+        self.topological_order = ti.field(dtype=ti.i32, shape=len(topological_order))
+        for i in range(len(topological_order)):
+            self.topological_order[i] = topological_order[i]
+            self.id2num[topological_order[i]] = len(categories[topological_order[i]])
+
+        print(self.topological_order, self.topological_order.shape)
+        # print(self.id2num)
+
+        start = time()
+        prev_num_elem = 0
+        for i in range(self.topological_order.shape[0]):
+            num_elem = self.id2num[self.topological_order[i]]
+            for j in range(num_elem):
+                for k in range(self.total_samples_per_element):
+                    for l in range(3):
+                        ind = prev_num_elem * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + (k * 3 + l)
+                        # print(ind)
+                        print()
+                        self.target[ind] = self.categories[topological_order[i]]
+            prev_num_elem += num_elem
+
+        end = time()
+        print(end - start)
+
+        start = time()
+        self.initialize_taichi_fields()
+        end = time()
+        print(end - start)
+        return
         self.output = defaultdict(list)
         self.target_pcf_mean = defaultdict(dict)  # [id][id_parent][nSteps]
         self.target_pcf_min = defaultdict(dict)
@@ -66,15 +105,16 @@ class Solver:
         self.domainLength = opt.domainLength
         self.n_factor = self.domainLength * self.domainLength
         self.diskfact = 1
-        self.cur_id =
-        self.cur_parent_id = 0
+        # self.cur_id = 0
+        # self.cur_parent_id = 0
         self.n_repeat = math.ceil(self.n_factor)
 
         for i in categories.keys():
             x = np.array(categories[i])
             if opt.samples_per_element:
                 x = np.expand_dims(x, 1)
-            self.target[i] = ti.field(dtype=ti.f32, shape=x.shape)
+
+            # self.target[i] = ti.field(dtype=ti.f32, shape=x.shape)
             self.output[i] = ti.field(dtype=ti.f32, shape=(x.shape[0] * self.n_repeat, x.shape[1], x.shape[2]))
             self.output_disks_radii[i] = ti.field(dtype=ti.f32, shape=len(self.categories[i]) * self.n_repeat)
             self.current_pcf[i] = ti.field(dtype=ti.f32, shape=self.nSteps)
@@ -95,8 +135,8 @@ class Solver:
             x = np.array(categories[i])
             if opt.samples_per_element:
                 x = np.expand_dims(x, 1)
-            # print(x.shape)    # [N, spe, 3]
-            self.target[i].from_numpy(x)
+            print('x:', x.shape)  # [N, spe, 3]
+            # self.target[i].from_numpy(x)
             self.output[i].from_numpy(np.zeros((x.shape[0] * self.n_repeat, x.shape[1], x.shape[2])))
             radii = x[:, 0, -1].repeat(self.n_repeat) / self.domainLength
             radii = np.sort(radii)[::-1]
@@ -122,17 +162,23 @@ class Solver:
         end = time()
         print('Time for computeTarget {:.4f}s.'.format(end - start))
 
+
+    @ti.kernel
+    def initialize_taichi_fields(self):
+
+
     # @ti.kernel
     def compute_target_pcf_kernel(self):
-        print(self.cur_id, self.cur_parent_id)
+        pass
+        # print(self.cur_id, self.cur_parent_id)
 
     def compute_target_pcf(self):
         for i in self.categories.keys():
             # target_disks = self.target[i]
             for j in self.relations[i]:
-                self.cur_id = i
-                self.cur_parent_id = j
-                print(self.cur_id, self.cur_parent_id)
+                # self.cur_id = i
+                # self.cur_parent_id = j
+                # print(self.cur_id, self.cur_parent_id)
                 self.compute_target_pcf_kernel()
                 # cur_pcf_mean = self.target_pcf_model[i][j].pcf_mean.to_numpy()
                 # # cur_pcf_mean2 = self.output_pcf_model[i][j].pcf_mean.to_numpy()
