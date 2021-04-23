@@ -11,6 +11,7 @@ import glob
 from collections import defaultdict
 from asmcdd import ASMCDD
 from trainer import Trainer
+from solver import Solver
 
 # device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 device = torch.device('cpu')    # seems cpu is faster
@@ -94,7 +95,9 @@ def main():
             print('#Disk of class {:} {:}, their parents {:}'.format(k, len(categories[k]), relations[k]))
 
         # print(categories, relations)
-        Trainer(device, opt, categories, relations)
+        # Trainer(device, opt, categories, relations)
+        Solver(opt, categories, relations)
+
 
 if __name__ == "__main__":
     main()
