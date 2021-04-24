@@ -42,47 +42,72 @@ class Solver:
 
         graph, topological_order = utils.topologicalSort(len(self.categories.keys()), self.relations)
         print('topological_order:', topological_order)
+        self.topological_order = topological_order
 
         max_num_disks = -np.inf
+        total_num_relations = 0
         total_num_disks = 0
         for i in categories.keys():
             l = len(categories[i])
             total_num_disks += l
+            total_num_relations += len(self.relations[i])
             if max_num_disks < l:
                 max_num_disks = l
 
         # define taichi fields
+        self.topological_order_ti = ti.field(dtype=ti.i32, shape=len(topological_order))
+
         # samples_per_element + the center disk
         self.target = ti.field(dtype=ti.f32, shape=(total_num_disks * self.total_samples_per_element * 3))
-        self.id2num = ti.field(dtype=ti.i32, shape=self.num_classes)
-        self.topological_order = ti.field(dtype=ti.i32, shape=len(topological_order))
-        for i in range(len(topological_order)):
-            self.topological_order[i] = topological_order[i]
-            self.id2num[topological_order[i]] = len(categories[topological_order[i]])
+        self.target_id2ElemNum = ti.field(dtype=ti.i32, shape=self.num_classes)
+        self.target_id2PrevElemNum = ti.field(dtype=ti.i32, shape=self.num_classes)
+        self.target_id2RelNum = ti.field(dtype=ti.i32, shape=self.num_classes)
+        self.target_id2PrevRelNum = ti.field(dtype=ti.i32, shape=self.num_classes)
+        self.target_pcf_mean = ti.field(ti.f32, shape=(total_num_relations * self.nSteps))
+        self.target_pcf_min = ti.field(ti.f32, shape=(total_num_relations * self.nSteps))
+        self.target_pcf_max = ti.field(ti.f32, shape=(total_num_relations * self.nSteps))
 
-        print(self.topological_order, self.topological_order.shape)
-        # print(self.id2num)
+        prev_num_elem = 0
+        prev_num_relation = 0
+        for i in range(len(topological_order)):
+            self.topological_order_ti[i] = topological_order[i]
+            self.target_id2ElemNum[topological_order[i]] = len(categories[topological_order[i]])
+            self.target_id2RelNum[topological_order[i]] = len(relations[topological_order[i]])
+            self.target_id2PrevElemNum[topological_order[i]] = prev_num_elem
+            self.target_id2PrevRelNum[topological_order[i]] = prev_num_relation
+            prev_num_elem += len(categories[topological_order[i]])
+            prev_num_relation += len(relations[topological_order[i]])
+
+        print('topological_order:', self.topological_order)
+        print('id2num, prevNum:', self.target_id2ElemNum, self.target_id2RelNum, self.target_id2PrevElemNum,
+              self.target_id2PrevRelNum)
+        print('total_num_relations:', total_num_relations, self.relations)
+
+        for i in range(len(topological_order)):
+            num_relation = len(self.relations[topological_order[i]])
+            for j in range(num_relation):
+                for k in range(self.nSteps):
+                    ind = (self.target_id2PrevRelNum[i] * self.nSteps) + (j * self.nSteps + k)
 
         start = time()
-        prev_num_elem = 0
-        for i in range(self.topological_order.shape[0]):
-            num_elem = self.id2num[self.topological_order[i]]
+        for i in range(len(topological_order)):
+            num_elem = self.target_id2ElemNum[self.topological_order[i]]
             for j in range(num_elem):
                 for k in range(self.total_samples_per_element):
                     for l in range(3):
-                        ind = prev_num_elem * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + (k * 3 + l)
+                        ind = self.target_id2PrevElemNum[i] * self.total_samples_per_element * 3 + (
+                                j * self.total_samples_per_element * 3) + (k * 3 + l)
                         # print(ind)
-                        print()
-                        self.target[ind] = self.categories[topological_order[i]]
-            prev_num_elem += num_elem
+                        self.target[ind] = self.categories[topological_order[i]][j][k][l]
 
         end = time()
-        print(end - start)
+        print('Time for initializing target elements: {:.4f}s'.format(end - start))
 
         start = time()
-        self.initialize_taichi_fields()
+        self.compute_target_pcf()
         end = time()
-        print(end - start)
+        print('Time for initializing target PCF: {:.4f}s'.format(end - start))
+
         return
         self.output = defaultdict(list)
         self.target_pcf_mean = defaultdict(dict)  # [id][id_parent][nSteps]
@@ -162,24 +187,73 @@ class Solver:
         end = time()
         print('Time for computeTarget {:.4f}s.'.format(end - start))
 
-
     @ti.kernel
     def initialize_taichi_fields(self):
-
-
-    # @ti.kernel
-    def compute_target_pcf_kernel(self):
         pass
-        # print(self.cur_id, self.cur_parent_id)
+
+    @ti.func
+    def euclideanDistance(self, pi, pj):
+        diff = pi - pj
+        dist = ti.sqrt(diff[0] * diff[0] + diff[1] * diff[1])
+        return dist
+
+    @ti.func
+    def diskDistance(self, pi, pj):
+        d = self.euclideanDistance(pi, pj) / self.rmax
+        r1 = max(pi[2], pj[2]) / self.rmax
+        r2 = min(pi[2], pj[2]) / self.rmax
+        extent = max(d + r1 + r2, 2 * r1)
+        overlap = self.clamp(r1 + r2 - d, 0, 2 * r2)
+        f = extent - overlap + d + r1 - r2
+
+        if d <= r1 - r2:
+            f = f / (4 * r1 - 4 * r2)
+        elif d <= r1 + r2:
+            f = (f - 4 * r1 + 7 * r2) / (3 * r2)
+        else:
+            f = f - 4 * r1 - 2 * r2 + 3
+        # if self.isnan(f):
+        #     print(f)
+        return f
+
+    @ti.kernel
+    def compute_target_pcf_kernel(self, id_index: ti.i32, parent_id_index: ti.i32, same_category: ti.i32):
+        # print('compute_target_pcf_kernel')
+        num_elem_of_id = self.target_id2ElemNum[self.topological_order_ti[id_index]]
+        num_elem_of_parent_id = self.target_id2ElemNum[self.topological_order_ti[parent_id_index]]
+        # print(num_elem_of_id, num_elem_of_parent_id)
+
+        for i, j in ti.ndrange((0, num_elem_of_id), (0, num_elem_of_parent_id)):
+            for k1 in range(self.total_samples_per_element):
+                ind_i = self.target_id2PrevElemNum[id_index] * self.total_samples_per_element * 3 + (
+                        i * self.total_samples_per_element * 3) + k1 * 3  # + l
+                p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
+
+                for k2 in range(self.total_samples_per_element):
+                    ind_j = self.target_id2PrevElemNum[parent_id_index] * self.total_samples_per_element * 3 + (
+                            j * self.total_samples_per_element * 3) + k2 * 3  # + l
+                    p_j = ti.Vector([self.target[ind_j + 0], self.target[ind_j + 1], self.target[ind_j + 2]])
+                    dist = self.diskDistance(p_i, p_j)
+            # print(i, j)
+        #     for k in range(self.total_samples_per_element):
+        #         for l in range(3):
+        #             ind = prev_num_elem * self.total_samples_per_element * 3 + (
+        #                     j * self.total_samples_per_element * 3) + (k * 3 + l)
+        #             # print(ind)
+        #             self.target[ind] = self.categories[topological_order[i]][j][k][l]
+        #             # print(self.categories[topological_order[i]][j][k][l])
+        # prev_num_elem += num_elem
 
     def compute_target_pcf(self):
-        for i in self.categories.keys():
-            # target_disks = self.target[i]
-            for j in self.relations[i]:
-                # self.cur_id = i
-                # self.cur_parent_id = j
-                # print(self.cur_id, self.cur_parent_id)
-                self.compute_target_pcf_kernel()
+        for i in range(len(self.topological_order)):
+            cur_id = self.topological_order[i]
+            for j in range(len(self.relations[cur_id])):
+                cur_parent_id = self.relations[cur_id][j]
+                # print(cur_id, cur_parent_id)
+                same_category = False
+                if cur_id == cur_parent_id:
+                    same_category = True
+                self.compute_target_pcf_kernel(i, j, same_category)
                 # cur_pcf_mean = self.target_pcf_model[i][j].pcf_mean.to_numpy()
                 # # cur_pcf_mean2 = self.output_pcf_model[i][j].pcf_mean.to_numpy()
                 #

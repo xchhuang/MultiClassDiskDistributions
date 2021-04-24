@@ -93,7 +93,10 @@ def main():
         # print
         for k in categories.keys():
             print('#Disk of class {:} {:}, their parents {:}'.format(k, len(categories[k]), relations[k]))
-
+            x = np.expand_dims(np.array(categories[k]), 1)
+            # print(x.shape)
+            categories[k] = x
+            # print(categories[k])
         # print(categories, relations)
         # Trainer(device, opt, categories, relations)
         Solver(opt, categories, relations)
