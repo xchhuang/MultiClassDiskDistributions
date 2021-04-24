@@ -54,7 +54,9 @@ class Solver:
             if max_num_disks < l:
                 max_num_disks = l
 
-        # define taichi fields
+        """
+        Define taichi fields, no initialization here
+        """
         self.topological_order_ti = ti.field(dtype=ti.i32, shape=len(topological_order))
 
         # samples_per_element + the center disk
@@ -66,7 +68,14 @@ class Solver:
         self.target_pcf_mean = ti.field(ti.f32, shape=(total_num_relations * self.nSteps))
         self.target_pcf_min = ti.field(ti.f32, shape=(total_num_relations * self.nSteps))
         self.target_pcf_max = ti.field(ti.f32, shape=(total_num_relations * self.nSteps))
+        self.target_rmax = ti.field(ti.f32, shape=self.num_classes)
+        self.target_radii = ti.field(ti.f32, shape=(self.num_classes, self.nSteps))
+        self.target_area = ti.field(ti.f32, shape=(self.num_classes, self.nSteps))
+        self.pcf_tmp_weights = ti.field(dtype=ti.f32, shape=(total_num_disks, self.nSteps))
 
+        """
+        Initialize taichi fields, after defining them all
+        """
         prev_num_elem = 0
         prev_num_relation = 0
         for i in range(len(topological_order)):
@@ -77,6 +86,15 @@ class Solver:
             self.target_id2PrevRelNum[topological_order[i]] = prev_num_relation
             prev_num_elem += len(categories[topological_order[i]])
             prev_num_relation += len(relations[topological_order[i]])
+            rmax = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * len(categories[topological_order[i]])))
+            self.target_rmax[topological_order[i]] = rmax
+            step_size = self.n_rmax / self.nSteps
+            for k in range(self.nSteps):
+                radii = (i + 1) * step_size * rmax
+                self.target_radii[topological_order[i], k] = radii
+                inner = max(0, radii - 0.5 * rmax)
+                outer = radii + 0.5 * rmax
+                self.target_area[topological_order[i], k] = math.pi * (outer * outer - inner * inner)
 
         print('topological_order:', self.topological_order)
         print('id2num, prevNum:', self.target_id2ElemNum, self.target_id2RelNum, self.target_id2PrevElemNum,
@@ -102,6 +120,9 @@ class Solver:
 
         end = time()
         print('Time for initializing target elements: {:.4f}s'.format(end - start))
+        utils.plot_disks_ti(self.topological_order_ti, self.target, self.target_id2ElemNum, self.target_id2PrevElemNum,
+                            self.total_samples_per_element, self.opt.output_folder+'/target_element_ti')
+
 
         start = time()
         self.compute_target_pcf()
@@ -191,6 +212,11 @@ class Solver:
     def initialize_taichi_fields(self):
         pass
 
+    @staticmethod
+    @ti.func
+    def clamp(x, lower, upper):
+        return max(lower, min(upper, x))
+
     @ti.func
     def euclideanDistance(self, pi, pj):
         diff = pi - pj
@@ -198,10 +224,10 @@ class Solver:
         return dist
 
     @ti.func
-    def diskDistance(self, pi, pj):
-        d = self.euclideanDistance(pi, pj) / self.rmax
-        r1 = max(pi[2], pj[2]) / self.rmax
-        r2 = min(pi[2], pj[2]) / self.rmax
+    def diskDistance(self, pi, pj, rmax):
+        d = self.euclideanDistance(pi, pj) / rmax
+        r1 = max(pi[2], pj[2]) / rmax
+        r2 = min(pi[2], pj[2]) / rmax
         extent = max(d + r1 + r2, 2 * r1)
         overlap = self.clamp(r1 + r2 - d, 0, 2 * r2)
         f = extent - overlap + d + r1 - r2
@@ -222,18 +248,27 @@ class Solver:
         num_elem_of_id = self.target_id2ElemNum[self.topological_order_ti[id_index]]
         num_elem_of_parent_id = self.target_id2ElemNum[self.topological_order_ti[parent_id_index]]
         # print(num_elem_of_id, num_elem_of_parent_id)
+        rmax = self.target_rmax[self.topological_order_ti[id_index]]
+        for i in ti.ndrange((0, num_elem_of_id)):
+            for k in range(self.nSteps):
+                self.weights_ti[i, k] = self.perimeter_weight_ti(pi[0], pi[1], self.rs_ti[k])
 
         for i, j in ti.ndrange((0, num_elem_of_id), (0, num_elem_of_parent_id)):
-            for k1 in range(self.total_samples_per_element):
-                ind_i = self.target_id2PrevElemNum[id_index] * self.total_samples_per_element * 3 + (
-                        i * self.total_samples_per_element * 3) + k1 * 3  # + l
-                p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
+            skip = False
+            if same_category and i == j:
+                skip = True
+            if not skip:
+                for k1 in range(self.total_samples_per_element):
+                    ind_i = self.target_id2PrevElemNum[id_index] * self.total_samples_per_element * 3 + (
+                            i * self.total_samples_per_element * 3) + k1 * 3  # + l
+                    p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
 
-                for k2 in range(self.total_samples_per_element):
-                    ind_j = self.target_id2PrevElemNum[parent_id_index] * self.total_samples_per_element * 3 + (
-                            j * self.total_samples_per_element * 3) + k2 * 3  # + l
-                    p_j = ti.Vector([self.target[ind_j + 0], self.target[ind_j + 1], self.target[ind_j + 2]])
-                    dist = self.diskDistance(p_i, p_j)
+                    for k2 in range(self.total_samples_per_element):
+                        ind_j = self.target_id2PrevElemNum[parent_id_index] * self.total_samples_per_element * 3 + (
+                                j * self.total_samples_per_element * 3) + k2 * 3  # + l
+                        p_j = ti.Vector([self.target[ind_j + 0], self.target[ind_j + 1], self.target[ind_j + 2]])
+                        dist = self.diskDistance(p_i, p_j, rmax)
+                        # print('dist:', dist)
             # print(i, j)
         #     for k in range(self.total_samples_per_element):
         #         for l in range(3):
