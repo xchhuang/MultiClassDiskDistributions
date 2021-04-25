@@ -113,7 +113,7 @@ class Solver:
             prev_num_elem += len(categories[topological_order[i]])
             prev_num_relation += len(relations[topological_order[i]])
             rmax = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * len(categories[topological_order[i]])))
-            self.target_rmax[topological_order[i]] = rmax
+            self.target_rmax[id] = rmax
             step_size = self.n_rmax / self.nSteps
             for k in range(self.nSteps):
                 radii = (k + 1) * step_size * rmax
@@ -470,25 +470,35 @@ class Solver:
         if self.output_id2currentNum[parent_id] == 0:
             is_continue = False
         if is_continue:
-            # print('is_continue')
             for j in range(self.output_id2currentNum[parent_id]):
                 d_outer = np.inf
                 for k1 in range(self.total_samples_per_element):
                     ind_i = self.target_id2PrevElemNum[id_index] * self.n_repeat * self.total_samples_per_element * 3 + (
                             n_accepted * self.total_samples_per_element * 3) + k1 * 3  # + l
-                    p_i = ti.Vector([self.output_disks_radii[ind_i + 0], self.output_disks_radii[ind_i + 1], self.output_disks_radii[ind_i + 2]])
+                    p_i = ti.Vector([rx, ry, self.output_disks_radii[ind_i + 2]])
                     d_inner = np.inf
                     for k2 in range(self.total_samples_per_element):
                         ind_j = self.target_id2PrevElemNum[parent_id_index] * self.n_repeat * self.total_samples_per_element * 3 + (
                                 j * self.total_samples_per_element * 3) + k2 * 3  # + l
-                        p_j = ti.Vector([self.output_disks_radii[ind_j + 0], self.output_disks_radii[ind_j + 1], self.output_disks_radii[ind_j + 2]])
-                        dist = self.diskDistance(p_i, p_j, self.target_rmax[id])
+                        p_j = ti.Vector([self.output[ind_j + 0], self.output[ind_j + 1], self.output[ind_j + 2]])
+                        dist = self.diskDistance(p_i, p_j, self.target_rmax[parent_id])
                         if d_inner > dist:
                             d_inner = dist
                     if d_outer > d_inner:
                         d_outer = d_inner
-                print(d_outer)
+                # print('d_outer:', d_outer)
+                for k in range(self.nSteps):
+                    r = self.target_radii[parent_id, k] / self.target_rmax[parent_id]
+                    val = self.gaussianKernel(r - d_outer)
+                    self.test_pcf[2, k] += val
+                    self.test_pcf[1, k] += val * self.weights[parent_id, j, k]
 
+
+            for k in range(self.nSteps):
+                self.test_pcf[2, k] += self.test_pcf[0, k] / self.target_area[parent_id, k]
+                self.test_pcf[1, k] = self.test_pcf[2, k] + self.test_pcf[1, k] / self.target_area[parent_id, k]
+                self.test_pcf[2, k] /= self.output_id2currentNum[parent_id]
+                self.test_pcf[1, k] /= target_size
 
     @ti.func
     def compute_error(self, id_index, parent_id_index):
@@ -550,12 +560,12 @@ class Solver:
                     p_i = ti.Vector([rx, ry, self.output_disks_radii[ind + 2]])
                     for k in range(self.nSteps):
                         val = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k] * self.disk_fact)
-                        self.test_pcf[1, k] = val
+                        self.test_pcf[0, k] = val
 
                 for k in range(self.nSteps):
                     self.contributions[parent_id, 0, k] = self.test_pcf[0, k]
                     self.contributions[parent_id, 1, k] = self.test_pcf[1, k]
-                    self.contributions[parent_id, 1, k] = self.test_pcf[2, k]
+                    self.contributions[parent_id, 2, k] = self.test_pcf[2, k]
 
             return rejected
 
@@ -599,8 +609,16 @@ class Solver:
                             ind_out = Ne * self.total_samples_per_element * 3 + (n_accepted * self.total_samples_per_element * 3) + (k * 3 + l)
                             self.output[ind_out] = self.output_disks_radii[ind_out]
 
+                    for j in range(len(self.relations[cur_id])):
+                        parent_id = self.relations[cur_id][j]
+                        if cur_id == parent_id:
+                            for k in range(self.nSteps):
+                                self.weights[parent_id, n_accepted, k] = self.contributions[parent_id, 0, k]
+                        for k in range(self.nSteps):
+                            self.current_pcf[parent_id, k] += self.contributions[parent_id, 1, k]
+
                     n_accepted += 1
-                    break
+
 
                 if fails > max_fails:
                     print('Warning: need to do grid search...')
