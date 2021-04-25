@@ -101,7 +101,7 @@ def plot_disks(topological_order, outputs, filename):
     plt.clf()
 
 
-def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevElemNum, total_samples_per_element, filename):
+def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevElemNum, total_samples_per_element, n_reapt, filename):
     topological_order = topological_order.to_numpy()
     outputs = outputs.to_numpy()
     target_id2ElemNum = target_id2ElemNum.to_numpy()
@@ -110,12 +110,12 @@ def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevE
     fig, ax = plt.subplots()
     for i in range(len(topological_order)):
         out = []
-        num_elem = target_id2ElemNum[topological_order[i]]
+        num_elem = target_id2ElemNum[topological_order[i]] * n_reapt
         for j in range(num_elem):
             e = []
             for k in range(total_samples_per_element):
                 ind = target_id2PrevElemNum[topological_order[i]] * total_samples_per_element * 3 + (
-                        j * total_samples_per_element * 3) + (k * 3 )
+                        j * total_samples_per_element * 3) + (k * 3)
                 e.append([outputs[ind + 0], outputs[ind + 1], outputs[ind + 2]])
             out.append(e)
         out = np.array(out)
