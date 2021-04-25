@@ -71,7 +71,7 @@ class Solver:
         self.target_rmax = ti.field(ti.f32, shape=self.num_classes)
         self.target_radii = ti.field(ti.f32, shape=(self.num_classes, self.nSteps))
         self.target_area = ti.field(ti.f32, shape=(self.num_classes, self.nSteps))
-        self.pcf_tmp_weights = ti.field(dtype=ti.f32, shape=(total_num_disks, self.nSteps))
+        self.pcf_tmp_weights = ti.field(dtype=ti.f32, shape=(total_num_disks * self.nSteps))
 
         """
         Initialize taichi fields, after defining them all
@@ -90,7 +90,7 @@ class Solver:
             self.target_rmax[topological_order[i]] = rmax
             step_size = self.n_rmax / self.nSteps
             for k in range(self.nSteps):
-                radii = (i + 1) * step_size * rmax
+                radii = (k + 1) * step_size * rmax
                 self.target_radii[topological_order[i], k] = radii
                 inner = max(0, radii - 0.5 * rmax)
                 outer = radii + 0.5 * rmax
@@ -113,7 +113,7 @@ class Solver:
             for j in range(num_elem):
                 for k in range(self.total_samples_per_element):
                     for l in range(3):
-                        ind = self.target_id2PrevElemNum[i] * self.total_samples_per_element * 3 + (
+                        ind = self.target_id2PrevElemNum[self.topological_order[i]] * self.total_samples_per_element * 3 + (
                                 j * self.total_samples_per_element * 3) + (k * 3 + l)
                         # print(ind)
                         self.target[ind] = self.categories[topological_order[i]][j][k][l]
@@ -123,6 +123,14 @@ class Solver:
         utils.plot_disks_ti(self.topological_order_ti, self.target, self.target_id2ElemNum, self.target_id2PrevElemNum,
                             self.total_samples_per_element, self.opt.output_folder+'/target_element_ti')
 
+
+        for i in range(len(self.topological_order)):
+            num_elem = self.target_id2ElemNum[self.topological_order[i]]
+            for j in range(num_elem):
+                for k in range(self.nSteps):
+                    # print(self.target_id2PrevElemNum[self.topological_order[i]])
+                    ind_w = self.target_id2PrevElemNum[self.topological_order[i]] * self.nSteps + j * self.nSteps + k
+                    # print('ind_w:', ind_w)
 
         start = time()
         self.compute_target_pcf()
@@ -212,6 +220,32 @@ class Solver:
     def initialize_taichi_fields(self):
         pass
 
+    @ti.func
+    def gaussianKernel(self, x):
+        return (1.0 / (np.sqrt(math.pi) * self.sigma)) * ti.exp(-((x * x) / (self.sigma * self.sigma)))
+
+    @ti.func
+    def perimeter_weight_helper(self, dx, dy, r):
+        angle = 0.0
+        if dx < r:
+            alpha = ti.acos(dx / r)
+            angle = min(alpha, ti.atan2(dy, dx)) + min(alpha, ti.atan2((1 - dy), dx))
+        return angle
+
+    @ti.func
+    def perimeter_weight_ti(self, x, y, r):
+        full_angle = 2 * np.pi
+        full_angle -= self.perimeter_weight_helper(x, y, r)
+        full_angle -= self.perimeter_weight_helper(1 - x, y, r)
+        full_angle -= self.perimeter_weight_helper(y, x, r)
+        full_angle -= self.perimeter_weight_helper(1 - y, x, r)
+        full_angle /= 2 * np.pi
+        full_angle = self.clamp(full_angle, 0, 1)
+        w = 0.0
+        if full_angle > 0:
+            w = 1.0 / full_angle
+        return w
+
     @staticmethod
     @ti.func
     def clamp(x, lower, upper):
@@ -245,29 +279,48 @@ class Solver:
     @ti.kernel
     def compute_target_pcf_kernel(self, id_index: ti.i32, parent_id_index: ti.i32, same_category: ti.i32):
         # print('compute_target_pcf_kernel')
-        num_elem_of_id = self.target_id2ElemNum[self.topological_order_ti[id_index]]
-        num_elem_of_parent_id = self.target_id2ElemNum[self.topological_order_ti[parent_id_index]]
+        id = self.topological_order_ti[id_index]
+        parent_id = self.topological_order_ti[parent_id_index]
+        num_elem_of_id = self.target_id2ElemNum[id]
+        num_elem_of_parent_id = self.target_id2ElemNum[parent_id]
         # print(num_elem_of_id, num_elem_of_parent_id)
-        rmax = self.target_rmax[self.topological_order_ti[id_index]]
-        for i in ti.ndrange((0, num_elem_of_id)):
-            for k in range(self.nSteps):
-                self.weights_ti[i, k] = self.perimeter_weight_ti(pi[0], pi[1], self.rs_ti[k])
+        rmax = self.target_rmax[id]
+        for _ in range(1):
+            for i in ti.ndrange((0, num_elem_of_id)):
+                for k in range(self.nSteps):
+                    ind_i = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (
+                            i * self.total_samples_per_element * 3) + 0 * 3  # + l
+                    p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
+                    ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
+                    self.pcf_tmp_weights[ind_w] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k])
 
         for i, j in ti.ndrange((0, num_elem_of_id), (0, num_elem_of_parent_id)):
             skip = False
             if same_category and i == j:
                 skip = True
             if not skip:
+                d_outer = np.inf
                 for k1 in range(self.total_samples_per_element):
                     ind_i = self.target_id2PrevElemNum[id_index] * self.total_samples_per_element * 3 + (
                             i * self.total_samples_per_element * 3) + k1 * 3  # + l
                     p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
 
+                    d_inner = np.inf
                     for k2 in range(self.total_samples_per_element):
                         ind_j = self.target_id2PrevElemNum[parent_id_index] * self.total_samples_per_element * 3 + (
                                 j * self.total_samples_per_element * 3) + k2 * 3  # + l
                         p_j = ti.Vector([self.target[ind_j + 0], self.target[ind_j + 1], self.target[ind_j + 2]])
                         dist = self.diskDistance(p_i, p_j, rmax)
+                        if d_inner > dist:
+                            d_inner = dist
+                    if d_outer > d_inner:
+                        d_outer = d_inner
+                # print(d_outer)
+
+                for k in range(self.nSteps):
+                    r = self.target_radii[id, k] / self.target_rmax[id]
+                    val = self.gaussianKernel(r - d_outer)
+                    self.target_pcf_mean[k] = val * self.pcf_tmp_weights[id, k] / self.target_area[id, k] / num_elem_of_parent_id
                         # print('dist:', dist)
             # print(i, j)
         #     for k in range(self.total_samples_per_element):
@@ -289,6 +342,7 @@ class Solver:
                 if cur_id == cur_parent_id:
                     same_category = True
                 self.compute_target_pcf_kernel(i, j, same_category)
+                return
                 # cur_pcf_mean = self.target_pcf_model[i][j].pcf_mean.to_numpy()
                 # # cur_pcf_mean2 = self.output_pcf_model[i][j].pcf_mean.to_numpy()
                 #

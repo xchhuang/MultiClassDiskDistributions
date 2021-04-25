@@ -114,7 +114,7 @@ def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevE
         for j in range(num_elem):
             e = []
             for k in range(total_samples_per_element):
-                ind = target_id2PrevElemNum[i] * total_samples_per_element * 3 + (
+                ind = target_id2PrevElemNum[topological_order[i]] * total_samples_per_element * 3 + (
                         j * total_samples_per_element * 3) + (k * 3 )
                 e.append([outputs[ind + 0], outputs[ind + 1], outputs[ind + 2]])
             out.append(e)
