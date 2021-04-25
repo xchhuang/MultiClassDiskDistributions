@@ -62,6 +62,7 @@ class Solver:
         Define taichi fields, no initialization here
         """
         self.topological_order_ti = ti.field(dtype=ti.i32, shape=len(topological_order))
+        self.relations_ti = ti.field(dtype=ti.i32, shape=total_num_relations)
 
         # samples_per_element + the center disk
         self.target = ti.field(dtype=ti.f32, shape=(total_num_disks * self.total_samples_per_element * 3))
@@ -81,12 +82,14 @@ class Solver:
                                shape=(total_num_disks * self.n_repeat * self.total_samples_per_element * 3))
         # self.output_id2ElemNum = ti.field(dtype=ti.i32, shape=self.num_classes)
         self.output_id2currentNum = ti.field(dtype=ti.i32, shape=self.num_classes)
-        self.output_disks_radii = ti.field(dtype=ti.f32, shape=(total_num_disks * self.n_repeat * self.total_samples_per_element * 3))
+        self.output_disks_radii = ti.field(dtype=ti.f32,
+                                           shape=(total_num_disks * self.n_repeat * self.total_samples_per_element * 3))
 
         self.current_pcf = ti.field(dtype=ti.f32, shape=(self.num_classes, self.nSteps))
         self.weights = ti.field(dtype=ti.f32, shape=(self.num_classes, max_num_disks, self.nSteps))
         # Contribution struct: weights, contribution, pcf in order
         self.contributions = ti.field(dtype=ti.f32, shape=(self.num_classes, 3, self.nSteps))
+        self.test_pcf = ti.field(dtype=ti.f32, shape=(3, self.nSteps))  # Contribution struct
 
         # print(self.output.shape, self.output_id2currentNum)   # test num
 
@@ -119,10 +122,18 @@ class Solver:
                 outer = radii + 0.5 * rmax
                 self.target_area[topological_order[i], k] = math.pi * (outer * outer - inner * inner)
 
+        # test relations_ti
+        for i in range(len(topological_order)):
+            id = topological_order[i]
+            num_relation = len(relations[i])
+            for j in range(num_relation):
+                ind = self.target_id2PrevRelNum[id] + j
+                self.relations_ti[ind] = relations[i][j]
+
         print('topological_order:', self.topological_order)
         print('id2num, prevNum:', self.target_id2ElemNum, self.target_id2RelNum, self.target_id2PrevElemNum,
               self.target_id2PrevRelNum)
-        print('total_num_relations:', total_num_relations, self.relations)
+        print('total_num_relations:', total_num_relations, self.relations, self.relations_ti)
 
         # for i in range(len(topological_order)):
         #     num_relation = len(self.relations[topological_order[i]])
@@ -189,30 +200,39 @@ class Solver:
                 k = 0
                 l = 2
                 ind = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (
-                              j * self.total_samples_per_element * 3) + (k * 3 + l)
+                        j * self.total_samples_per_element * 3) + (k * 3 + l)
                 radii.append(self.target[ind])
-                        # self.target[ind] = self.categories[topological_order[i]][j][k][l]
+                # self.target[ind] = self.categories[topological_order[i]][j][k][l]
             radii = np.array(radii)
             idx = np.argsort(radii)[::-1]
             # print(radii[idx])
-            for j in range(len(idx)*self.n_repeat):
+            for j in range(len(idx) * self.n_repeat):
                 # print(j, self.n_repeat, j // self.n_repeat)
                 # print(j, idx[j])
                 for k in range(self.total_samples_per_element):
                     for l in range(3):
-
                         ind_tar = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (
-                                      idx[j // self.n_repeat] * self.total_samples_per_element * 3) + (k * 3 + l)
-                        ind_out = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (
+                                idx[j // self.n_repeat] * self.total_samples_per_element * 3) + (k * 3 + l)
+                        ind_out = self.target_id2PrevElemNum[id] * self.n_repeat * self.total_samples_per_element * 3 + (
                                 j * self.total_samples_per_element * 3) + (k * 3 + l)
-                        self.output_disks_radii[ind_out] = self.target[ind_tar]
+                        # print('ind_out:', ind_out)
+                        # print('ind_tar:', ind_tar)
+
+                        self.output_disks_radii[ind_out] = self.target[ind_tar] / self.domainLength
 
                 # radii.append(self.target[ind])
             # print(self.output_disks_radii)
-        utils.plot_disks_ti(self.topological_order_ti, self.output_disks_radii, self.target_id2ElemNum, self.target_id2PrevElemNum,
-                            self.total_samples_per_element, self.n_repeat, self.opt.output_folder + '/output_element_ti')
+        utils.plot_disks_ti(self.topological_order_ti, self.output_disks_radii, self.target_id2ElemNum,
+                            self.target_id2PrevElemNum,
+                            self.total_samples_per_element, self.n_repeat,
+                            self.opt.output_folder + '/test_output_element_ti')
 
         self.initialization()
+
+        utils.plot_disks_ti(self.topological_order_ti, self.output, self.target_id2ElemNum,
+                            self.target_id2PrevElemNum,
+                            self.total_samples_per_element, self.n_repeat,
+                            self.opt.output_folder + '/output_element_ti')
         # return
         # self.output = defaultdict(list)
         # self.target_pcf_mean = defaultdict(dict)  # [id][id_parent][nSteps]
@@ -302,6 +322,7 @@ class Solver:
             ind = (self.target_id2PrevElemNum[id] * self.n_repeat) * self.total_samples_per_element * 3 + (
                     i * self.total_samples_per_element * 3) + (0 * 3 + 0)
             p_i = ti.Vector([self.output[ind + 0], self.output[ind + 1], self.output[ind + 2]])
+            # get_weight
             for k in range(self.nSteps):
                 val = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k] * self.disk_fact)
                 self.weights[parent_id, i, k] = val
@@ -370,7 +391,6 @@ class Solver:
         num_elem_of_id = self.target_id2ElemNum[id]
         num_elem_of_parent_id = self.target_id2ElemNum[parent_id]
         # print(num_elem_of_id, num_elem_of_parent_id)
-        rmax = self.target_rmax[id]
         # for _ in range(1):
         for i in ti.ndrange((0, num_elem_of_id)):
             for k in range(self.nSteps):
@@ -397,7 +417,7 @@ class Solver:
                         ind_j = self.target_id2PrevElemNum[parent_id_index] * self.total_samples_per_element * 3 + (
                                 j * self.total_samples_per_element * 3) + k2 * 3  # + l
                         p_j = ti.Vector([self.target[ind_j + 0], self.target[ind_j + 1], self.target[ind_j + 2]])
-                        dist = self.diskDistance(p_i, p_j, rmax)
+                        dist = self.diskDistance(p_i, p_j, self.target_rmax[id])
                         if d_inner > dist:
                             d_inner = dist
                     if d_outer > d_inner:
@@ -436,7 +456,111 @@ class Solver:
                     same_category = True
                 self.compute_target_pcf_kernel(i, j, same_category)
 
+    @ti.func
+    def compute_contribution(self, id_index, parent_id_index, rx, ry, n_accepted, target_size):
+        id = self.topological_order_ti[id_index]
+        parent_id = self.topological_order_ti[parent_id_index]
+
+        ind_cur = self.target_id2PrevElemNum[id] * self.n_repeat * self.total_samples_per_element * 3 + (
+                n_accepted * self.total_samples_per_element * 3) + (0 * 3 + 0)  # k = 0, l = 0
+        p_i = ti.Vector([rx, ry, self.output_disks_radii[ind_cur + 2]])     # random position (rx, ry)
+        for k in range(self.nSteps):
+            self.test_pcf[0, k] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k] * self.disk_fact)
+        is_continue = True
+        if self.output_id2currentNum[parent_id] == 0:
+            is_continue = False
+        if is_continue:
+            # print('is_continue')
+            for j in range(self.output_id2currentNum[parent_id]):
+                d_outer = np.inf
+                for k1 in range(self.total_samples_per_element):
+                    ind_i = self.target_id2PrevElemNum[id_index] * self.n_repeat * self.total_samples_per_element * 3 + (
+                            n_accepted * self.total_samples_per_element * 3) + k1 * 3  # + l
+                    p_i = ti.Vector([self.output_disks_radii[ind_i + 0], self.output_disks_radii[ind_i + 1], self.output_disks_radii[ind_i + 2]])
+                    d_inner = np.inf
+                    for k2 in range(self.total_samples_per_element):
+                        ind_j = self.target_id2PrevElemNum[parent_id_index] * self.n_repeat * self.total_samples_per_element * 3 + (
+                                j * self.total_samples_per_element * 3) + k2 * 3  # + l
+                        p_j = ti.Vector([self.output_disks_radii[ind_j + 0], self.output_disks_radii[ind_j + 1], self.output_disks_radii[ind_j + 2]])
+                        dist = self.diskDistance(p_i, p_j, self.target_rmax[id])
+                        if d_inner > dist:
+                            d_inner = dist
+                    if d_outer > d_inner:
+                        d_outer = d_inner
+                print(d_outer)
+
+
+    @ti.func
+    def compute_error(self, id_index, parent_id_index):
+        id = self.topological_order_ti[id_index]
+        parent_id = self.topological_order_ti[parent_id_index]
+        error_mean = -np.inf
+        error_min = -np.inf
+        error_max = -np.inf
+        for k in range(self.nSteps):
+            ind_w = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+            x = (self.current_pcf[parent_id, k] + self.test_pcf[1, k] - self.target_pcf_mean[ind_w]) / self.target_pcf_mean[ind_w]
+            error_mean = max(x, error_mean)
+
+        for k in range(self.nSteps):
+            ind_w = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+            x = (self.test_pcf[1, k] - self.target_pcf_max[ind_w]) / self.target_pcf_max[ind_w]
+            error_max = max(x, error_max)
+
+        for k in range(self.nSteps):
+            ind_w = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+            x = (self.target_pcf_min[ind_w] - self.test_pcf[1, k]) / self.target_pcf_min[ind_w]
+            error_min = max(x, error_min)
+
+        ce = error_mean + max(error_max, error_min)
+
+        return ce
+
+    @ti.kernel
+    def random_search(self, id_index: ti.i32, e: ti.f32, rx: ti.f32, ry: ti.f32, n_accepted: ti.i32) -> ti.i32:
+        for _ in range(1):  # force serialization for now
+            rejected = False
+            id = self.topological_order_ti[id_index]
+            num_relation = self.target_id2RelNum[id_index]
+            for j in range(num_relation):
+                ind_parent_id = self.target_id2PrevRelNum[id] + j
+                parent_id = self.relations_ti[ind_parent_id]
+                # print('ids:', id, parent_id)
+
+                if self.output_id2currentNum[id] != 0 or id != parent_id:
+
+                    same_category = False
+                    if id == parent_id:
+                        same_category = True
+                    target_size = 2 * (self.target_id2ElemNum[id] * self.n_repeat) * self.output_id2currentNum[parent_id]
+                    if same_category:
+                        target_size = 2 * (self.target_id2ElemNum[id] * self.n_repeat) * (
+                                    self.target_id2ElemNum[id] * self.n_repeat)
+
+                    self.compute_contribution(id_index, j, rx, ry, n_accepted, target_size)
+
+                    ce = self.compute_error(id_index, j)
+                    if e < ce:
+                        rejected = True
+                        break
+
+                else:
+                    ind = (self.target_id2PrevElemNum[id] * self.n_repeat) * self.total_samples_per_element * 3 + (
+                            n_accepted * self.total_samples_per_element * 3) + (0 * 3 + 0)
+                    p_i = ti.Vector([rx, ry, self.output_disks_radii[ind + 2]])
+                    for k in range(self.nSteps):
+                        val = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k] * self.disk_fact)
+                        self.test_pcf[1, k] = val
+
+                for k in range(self.nSteps):
+                    self.contributions[parent_id, 0, k] = self.test_pcf[0, k]
+                    self.contributions[parent_id, 1, k] = self.test_pcf[1, k]
+                    self.contributions[parent_id, 1, k] = self.test_pcf[2, k]
+
+            return rejected
+
     def initialization(self):
+        e_delta = 1e-4
         for i in range(len(self.topological_order)):
             cur_id = self.topological_order[i]
             e_0 = 0
@@ -452,7 +576,35 @@ class Solver:
                 self.get_weights(i, j)
 
             n_accepted = 0
+            output_size = self.target_id2ElemNum[cur_id] * self.n_repeat
+            print('output_size:', output_size)
 
             start_time = time()
+            while n_accepted < output_size:
 
-            # while n_accepted
+                e = e_0 + e_delta * fails
+                rx = np.random.rand()
+                ry = np.random.rand()
+
+                rejected = self.random_search(i, e, rx, ry, n_accepted)
+
+                if rejected:
+                    fails += 1
+                else:
+                    fails = 0
+                    self.output_id2currentNum[cur_id] += 1
+                    Ne = self.target_id2PrevElemNum[cur_id] * self.n_repeat
+                    for k in range(self.total_samples_per_element):
+                        for l in range(3):
+                            ind_out = Ne * self.total_samples_per_element * 3 + (n_accepted * self.total_samples_per_element * 3) + (k * 3 + l)
+                            self.output[ind_out] = self.output_disks_radii[ind_out]
+
+                    n_accepted += 1
+                    break
+
+                if fails > max_fails:
+                    print('Warning: need to do grid search...')
+                # n_accepted += 1
+
+            end_time = time()
+            print('Initialization time of id {:} is {:.4f}s'.format(cur_id, end_time - start_time))
