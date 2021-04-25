@@ -101,11 +101,11 @@ class Solver:
               self.target_id2PrevRelNum)
         print('total_num_relations:', total_num_relations, self.relations)
 
-        for i in range(len(topological_order)):
-            num_relation = len(self.relations[topological_order[i]])
-            for j in range(num_relation):
-                for k in range(self.nSteps):
-                    ind = (self.target_id2PrevRelNum[i] * self.nSteps) + (j * self.nSteps + k)
+        # for i in range(len(topological_order)):
+        #     num_relation = len(self.relations[topological_order[i]])
+        #     for j in range(num_relation):
+        #         for k in range(self.nSteps):
+        #             ind = (self.target_id2PrevRelNum[i] * self.nSteps) + (j * self.nSteps + k)
 
         start = time()
         for i in range(len(topological_order)):
@@ -113,17 +113,18 @@ class Solver:
             for j in range(num_elem):
                 for k in range(self.total_samples_per_element):
                     for l in range(3):
-                        ind = self.target_id2PrevElemNum[self.topological_order[i]] * self.total_samples_per_element * 3 + (
-                                j * self.total_samples_per_element * 3) + (k * 3 + l)
+                        ind = self.target_id2PrevElemNum[
+                                  self.topological_order[i]] * self.total_samples_per_element * 3 + (
+                                      j * self.total_samples_per_element * 3) + (k * 3 + l)
                         # print(ind)
                         self.target[ind] = self.categories[topological_order[i]][j][k][l]
 
         end = time()
         print('Time for initializing target elements: {:.4f}s'.format(end - start))
         utils.plot_disks_ti(self.topological_order_ti, self.target, self.target_id2ElemNum, self.target_id2PrevElemNum,
-                            self.total_samples_per_element, self.opt.output_folder+'/target_element_ti')
+                            self.total_samples_per_element, self.opt.output_folder + '/target_element_ti')
 
-
+        # test for pcf_tmp_weights
         for i in range(len(self.topological_order)):
             num_elem = self.target_id2ElemNum[self.topological_order[i]]
             for j in range(num_elem):
@@ -132,11 +133,26 @@ class Solver:
                     ind_w = self.target_id2PrevElemNum[self.topological_order[i]] * self.nSteps + j * self.nSteps + k
                     # print('ind_w:', ind_w)
 
+        # test for target_pcf_*
+        for i in range(len(self.topological_order)):
+            num_relation = self.target_id2RelNum[self.topological_order[i]]
+            for j in range(num_relation):
+                for k in range(self.nSteps):
+                    # print(self.target_id2PrevElemNum[self.topological_order[i]])
+                    ind_w = self.target_id2PrevRelNum[
+                                self.topological_order[i]] * self.nSteps + j * self.nSteps + k
+                    # print('ind_w:', ind_w)
+                    self.target_pcf_mean[ind_w] = 0
+                    self.target_pcf_min[ind_w] = np.inf
+                    self.target_pcf_max[ind_w] = -np.inf
+
         start = time()
         self.compute_target_pcf()
         end = time()
         print('Time for initializing target PCF: {:.4f}s'.format(end - start))
 
+        utils.plot_pcf(self.topological_order_ti, self.relations, self.target_pcf_mean, self.target_id2RelNum, self.target_id2PrevRelNum,
+                            self.nSteps, self.opt.output_folder + '/target_pcf')
         return
         self.output = defaultdict(list)
         self.target_pcf_mean = defaultdict(dict)  # [id][id_parent][nSteps]
@@ -211,10 +227,13 @@ class Solver:
                     outer = radii + 0.5 * self.target_pcf_rmax[i][j]
                     self.target_pcf_area[i][j][k] = math.pi * (outer * outer - inner * inner)
 
+
         start = time()
         self.compute_target_pcf()
         end = time()
-        print('Time for computeTarget {:.4f}s.'.format(end - start))
+        print('Time for computeTarget1 {:.4f}s.'.format(end - start))
+
+
 
     @ti.kernel
     def initialize_taichi_fields(self):
@@ -285,14 +304,15 @@ class Solver:
         num_elem_of_parent_id = self.target_id2ElemNum[parent_id]
         # print(num_elem_of_id, num_elem_of_parent_id)
         rmax = self.target_rmax[id]
-        for _ in range(1):
-            for i in ti.ndrange((0, num_elem_of_id)):
-                for k in range(self.nSteps):
-                    ind_i = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (
-                            i * self.total_samples_per_element * 3) + 0 * 3  # + l
-                    p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
-                    ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
-                    self.pcf_tmp_weights[ind_w] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k])
+        # for _ in range(1):
+        for i in ti.ndrange((0, num_elem_of_id)):
+            for k in range(self.nSteps):
+                ind_i = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (
+                        i * self.total_samples_per_element * 3) + 0 * 3  # + l
+                p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
+                ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
+                # print('ind_w:', ind_w)
+                self.pcf_tmp_weights[ind_w] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k])
 
         for i, j in ti.ndrange((0, num_elem_of_id), (0, num_elem_of_parent_id)):
             skip = False
@@ -320,17 +340,22 @@ class Solver:
                 for k in range(self.nSteps):
                     r = self.target_radii[id, k] / self.target_rmax[id]
                     val = self.gaussianKernel(r - d_outer)
-                    self.target_pcf_mean[k] = val * self.pcf_tmp_weights[id, k] / self.target_area[id, k] / num_elem_of_parent_id
-                        # print('dist:', dist)
-            # print(i, j)
-        #     for k in range(self.total_samples_per_element):
-        #         for l in range(3):
-        #             ind = prev_num_elem * self.total_samples_per_element * 3 + (
-        #                     j * self.total_samples_per_element * 3) + (k * 3 + l)
-        #             # print(ind)
-        #             self.target[ind] = self.categories[topological_order[i]][j][k][l]
-        #             # print(self.categories[topological_order[i]][j][k][l])
-        # prev_num_elem += num_elem
+                    ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
+                    # print('ind_w:', ind_w)
+                    ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+                    # print('ind_pcf:', ind_pcf)
+                    self.target_pcf_mean[ind_pcf] += val * self.pcf_tmp_weights[ind_w] / self.target_area[id, k] / num_elem_of_parent_id
+
+                for k in range(self.nSteps):
+                    ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+                    if self.target_pcf_min[ind_pcf] > self.target_pcf_mean[ind_pcf]:
+                        self.target_pcf_min[ind_pcf] = self.target_pcf_mean[ind_pcf]
+                    if self.target_pcf_max[ind_pcf] < self.target_pcf_mean[ind_pcf]:
+                        self.target_pcf_max[ind_pcf] = self.target_pcf_mean[ind_pcf]
+
+        for k in range(self.nSteps):
+            ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+            self.target_pcf_mean[ind_pcf] /= num_elem_of_id
 
     def compute_target_pcf(self):
         for i in range(len(self.topological_order)):
@@ -342,7 +367,7 @@ class Solver:
                 if cur_id == cur_parent_id:
                     same_category = True
                 self.compute_target_pcf_kernel(i, j, same_category)
-                return
+                # return
                 # cur_pcf_mean = self.target_pcf_model[i][j].pcf_mean.to_numpy()
                 # # cur_pcf_mean2 = self.output_pcf_model[i][j].pcf_mean.to_numpy()
                 #
