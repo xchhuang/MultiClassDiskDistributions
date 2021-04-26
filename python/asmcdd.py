@@ -105,14 +105,17 @@ class ASMCDD(torch.nn.Module):
                 # pretty_pcf = pretty_pcf_model(target_disks, parent_disks, same_category, dimen=3, use_fnorm=False)
 
                 # plt.figure(1)
-                plt.plot(cur_pcf_mean[:, 0].detach().cpu().numpy(), cur_pcf_mean[:, 1].detach().cpu().numpy())
+                plt.plot(cur_pcf_mean[:, 0].detach().cpu().numpy(), cur_pcf_mean[:, 1].detach().cpu().numpy(), c='r')
+                plt.plot(cur_pcf_mean[:, 0].detach().cpu().numpy(), cur_pcf_min.detach().cpu().numpy(), c='g')
+                plt.plot(cur_pcf_mean[:, 0].detach().cpu().numpy(), cur_pcf_max.detach().cpu().numpy(), c='b')
+
                 # plt.plot(pretty_pcf[:, 0].detach().cpu().numpy(), pretty_pcf[:, 1].detach().cpu().numpy())
                 # plt.legend(['0_0', 'pcf_0'])
                 # plt.savefig(self.opt.output_folder + '/pcf_{:}_{:}'.format(category_i, category_j))
                 # plt.clf()
                 # plt.ylim([0, 10])
                 plt.savefig(
-                    self.opt.output_folder + '/{:}_pcf_{:}_{:}'.format(self.opt.scene_name, category_i, category_j))
+                    self.opt.output_folder + '/{:}_diskPCF_{:}_{:}'.format(self.opt.scene_name, category_i, category_j))
                 plt.clf()
         print('===> computeTarget Done.')
 
