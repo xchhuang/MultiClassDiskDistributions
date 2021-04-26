@@ -137,9 +137,9 @@ def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevE
     plt.clf()
 
 
-def plot_pcf(topological_order, relations, pcf, target_id2RelNum, target_id2PrevRelNum, nSteps, filename):
+def plot_pcf(topological_order, relations, pcf_mean, pcf_min, pcf_max, target_id2RelNum, target_id2PrevRelNum, nSteps, filename):
     topological_order = topological_order.to_numpy()
-    pcf = pcf.to_numpy()
+    pcf_mean = pcf_mean.to_numpy()
     target_id2RelNum = target_id2RelNum.to_numpy()
     target_id2PrevRelNum = target_id2PrevRelNum.to_numpy()
 
@@ -147,15 +147,26 @@ def plot_pcf(topological_order, relations, pcf, target_id2RelNum, target_id2Prev
         id = topological_order[i]
         num_relation = target_id2RelNum[id]
         for j in range(num_relation):
-            out = []
+            out_pcf_mean = []
+            out_pcf_min = []
+            out_pcf_max = []
+
             for k in range(nSteps):
                 # print(self.target_id2PrevElemNum[self.topological_order[i]])
                 ind_w = target_id2PrevRelNum[id] * nSteps + j * nSteps + k
-                out.append(pcf[ind_w])
-            out = np.array(out)
+                out_pcf_mean.append(pcf_mean[ind_w])
+                out_pcf_min.append(pcf_min[ind_w])
+                out_pcf_max.append(pcf_max[ind_w])
+
+            out_pcf_mean = np.array(out_pcf_mean)
+            out_pcf_min = np.array(out_pcf_min)
+            out_pcf_max = np.array(out_pcf_mean)
+
             # print(out.shape)
             plt.figure(1)
-            plt.plot(out)
+            plt.plot(out_pcf_mean, c='r')
+            plt.plot(out_pcf_min, c='g')
+            plt.plot(out_pcf_max, c='b')
             plt.savefig(filename+'_{:}_{:}'.format(id, relations[id][j]))
             plt.clf()
 
