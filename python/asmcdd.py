@@ -294,7 +294,7 @@ class ASMCDD(torch.nn.Module):
                         weights_rel_torch = torch.stack(weights[relation], 0)
                         # print(others_rel_torch.shape, weights_rel_torch.shape)
                         # print(target_size)
-
+                        # print(rx, ry, target_size)
                         test_pcf = compute_contribution(self.device, self.nSteps, d_test, others_rel_torch,
                                                         weights_rel_torch, cur_pcf_model, same_category,
                                                         target_size, diskfact)
@@ -328,6 +328,7 @@ class ASMCDD(torch.nn.Module):
                     # if i == 1:
                     #     print('n_accepted:', n_accepted, d_test)
                     for relation in self.relations[i]:
+                        # print('weights[relation]:', n_accepted, len(weights[relation]))
                         current = current_pcf[relation]
                         contrib = contributions[relation]
                         if relation == i:

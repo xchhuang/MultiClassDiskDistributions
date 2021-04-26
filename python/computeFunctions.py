@@ -22,11 +22,14 @@ def compute_contribution(device, nbbins, pi, others, other_weights, cur_pcf_mode
 
     nbbins = cur_pcf_model.nbbins
     d = utils.diskDistance(pi, pj, rmax)
+    # print('d:', d)
     rs = cur_pcf_model.rs
     area = cur_pcf_model.area
     # print(rs.shape, d.shape)
     val = cur_pcf_model.gaussianKernel(rs.view(1, -1) / rmax - d.view(-1, 1).repeat(1, nbbins))
+    # print('val:', val)
     out.pcf = torch.sum(val, 0)
+    # print('out.pcf:', out.pcf)
     # print(out.pcf)
     # print(res.shape, other_weights.shape)
     out.contribution = torch.sum(val * other_weights, 0)
@@ -67,6 +70,7 @@ def compute_error(contribution, current_pcf, target_pcf):
     # print(target_pcf)
 
     x = (current_pcf + contribution.contribution - target_mean) / target_mean
+    # print(x)
     error_mean = max(filter_nan(x).max().item(), error_mean)
     # print(error_mean)
     x = (contribution.pcf - target_max) / target_max
@@ -77,6 +81,7 @@ def compute_error(contribution, current_pcf, target_pcf):
     # print('w/:', x)
     # print('wo/', filter_nan(x))
     ce = error_mean + max(error_max, error_min)
+    # print('ce:', ce)
     # print(error_mean, error_min, error_max)
     return ce
 

@@ -414,7 +414,7 @@ class Solver:
                 ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
                 # print('ind_w:', ind_w)
                 self.pcf_tmp_weights[ind_w] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k])    # target_radii[id] is correct
-                self.pcf_density[ind_w] = 0
+                self.pcf_density[ind_w] = 0.0
 
         # for i, j in ti.ndrange((0, num_elem_of_id), (0, num_elem_of_parent_id)):
         # for _ in range(1):
@@ -470,6 +470,8 @@ class Solver:
         for k in range(self.nSteps):
             # self.test_pcf[0, k] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k] * self.disk_fact)
             self.contribs[grid_id_x, grid_id_y, parent_id, 0, k] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k] * self.disk_fact)
+            self.contribs[grid_id_x, grid_id_y, parent_id, 1, k] = 0.0
+            self.contribs[grid_id_x, grid_id_y, parent_id, 2, k] = 0.0
 
         is_continue = True
         if self.output_id2currentNum[parent_id] == 0:
@@ -493,17 +495,19 @@ class Solver:
                 for k in range(self.nSteps):
                     r = self.target_radii[id, k] / self.target_rmax[id]
                     val = self.gaussianKernel(r - d_outer)
+                    # print(val)
                     # self.test_pcf[2, k] += val
                     # self.test_pcf[1, k] += val * self.weights[parent_id, j, k]
                     self.contribs[grid_id_x, grid_id_y, parent_id, 2, k] += val
                     self.contribs[grid_id_x, grid_id_y, parent_id, 1, k] += val * self.weights[parent_id, j, k]
+
 
             for k in range(self.nSteps):
                 # self.test_pcf[2, k] += self.test_pcf[0, k] / self.target_area[parent_id, k]
                 # self.test_pcf[1, k] = self.test_pcf[2, k] + self.test_pcf[1, k] / self.target_area[parent_id, k]
                 # self.test_pcf[2, k] /= self.output_id2currentNum[parent_id]
                 # self.test_pcf[1, k] /= target_size
-                self.contribs[grid_id_x, grid_id_y, parent_id, 2, k] += self.contribs[grid_id_x, grid_id_y, parent_id, 0, k] / self.target_area[id, k]
+                self.contribs[grid_id_x, grid_id_y, parent_id, 2, k] *= self.contribs[grid_id_x, grid_id_y, parent_id, 0, k] / self.target_area[id, k]
                 self.contribs[grid_id_x, grid_id_y, parent_id, 1, k] = self.contribs[grid_id_x, grid_id_y, parent_id, 2, k] + \
                                                                        self.contribs[grid_id_x, grid_id_y, parent_id, 1, k] / self.target_area[id, k]
                 self.contribs[grid_id_x, grid_id_y, parent_id, 2, k] /= self.output_id2currentNum[parent_id]
@@ -556,9 +560,11 @@ class Solver:
                     if same_category:
                         target_size = 2 * (self.target_id2ElemNum[id] * self.n_repeat) * (self.target_id2ElemNum[id] * self.n_repeat)
 
+                    # print(rx, ry, target_size)
                     self.compute_contribution(0, 0, id_index, j, rx, ry, n_accepted, target_size)
 
                     ce = self.compute_error(0, 0, id_index, j)
+
                     if e < ce:
                         rejected = True
                         break
@@ -570,6 +576,8 @@ class Solver:
                     for k in range(self.nSteps):
                         val = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k] * self.disk_fact)
                         self.contribs[0, 0, parent_id, 0, k] = val
+                        self.contribs[0, 0, parent_id, 1, k] = 0.0
+                        self.contribs[0, 0, parent_id, 2, k] = 0.0
 
                 # TODO: this might be unnecessary
                 for k in range(self.nSteps):
@@ -673,7 +681,7 @@ class Solver:
                     n_accepted += 1
 
                 if fails > max_fails:
-                    print('===> Warning: exceeding max_fails...')
+                    print('===> Warning: exceeding max_fails...', n_accepted)
                     # print('n_accepted before grid search:', n_accepted)
                     break
                     # self.minError_contrib.from_numpy(np.zeros((self.num_classes, 3, self.nSteps)))
