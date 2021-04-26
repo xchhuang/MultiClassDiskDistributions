@@ -160,7 +160,7 @@ def plot_pcf(topological_order, relations, pcf_mean, pcf_min, pcf_max, target_id
 
             out_pcf_mean = np.array(out_pcf_mean)
             out_pcf_min = np.array(out_pcf_min)
-            out_pcf_max = np.array(out_pcf_mean)
+            out_pcf_max = np.array(out_pcf_max)
 
             # print(out.shape)
             plt.figure(1)

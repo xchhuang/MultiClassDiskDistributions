@@ -78,6 +78,7 @@ class Solver:
         self.target_radii = ti.field(ti.f32, shape=(self.num_classes, self.nSteps))
         self.target_area = ti.field(ti.f32, shape=(self.num_classes, self.nSteps))
         self.pcf_tmp_weights = ti.field(dtype=ti.f32, shape=(total_num_disks * self.nSteps))
+        self.pcf_density = ti.field(dtype=ti.f32, shape=(total_num_disks * self.nSteps))
 
         self.output = ti.field(dtype=ti.f32, shape=(total_num_disks * self.n_repeat * self.total_samples_per_element * 3))
         # self.output_id2ElemNum = ti.field(dtype=ti.i32, shape=self.num_classes)
@@ -222,7 +223,7 @@ class Solver:
                             self.total_samples_per_element, self.n_repeat,
                             self.opt.output_folder + '/test_output_element_ti')
 
-        return
+
         # for _ in range(2):
         self.initialization()
 
@@ -408,48 +409,41 @@ class Solver:
         # for _ in range(1):
         for i in ti.ndrange((0, num_elem_of_id)):
             for k in range(self.nSteps):
-                ind_i = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (
-                        i * self.total_samples_per_element * 3) + 0 * 3  # + l
+                ind_i = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (i * self.total_samples_per_element * 3) + 0 * 3  # + l
                 p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
                 ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
                 # print('ind_w:', ind_w)
                 self.pcf_tmp_weights[ind_w] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k])    # target_radii[id] is correct
+                self.pcf_density[ind_w] = 0
 
-        for i, j in ti.ndrange((0, num_elem_of_id), (0, num_elem_of_parent_id)):
-            skip = False
-            if same_category and i == j:
-                skip = True
-            if not skip:
-                # d_outer = np.inf
-                # for k1 in range(self.total_samples_per_element):
-                #     ind_i = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (i * self.total_samples_per_element * 3) + k1 * 3  # + l
-                #     p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
-                #     d_inner = np.inf
-                #     for k2 in range(self.total_samples_per_element):
-                #         ind_j = self.target_id2PrevElemNum[parent_id] * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + k2 * 3  # + l
-                #         p_j = ti.Vector([self.target[ind_j + 0], self.target[ind_j + 1], self.target[ind_j + 2]])
-                #         dist = self.diskDistance(p_i, p_j, self.target_rmax[id])
-                #         if d_inner > dist:
-                #             d_inner = dist
-                #     if d_outer > d_inner:
-                #         d_outer = d_inner
-                d_outer = self.multiSphereDistance(id, parent_id, i, j)
+        # for i, j in ti.ndrange((0, num_elem_of_id), (0, num_elem_of_parent_id)):
+        # for _ in range(1):
+        for i in ti.ndrange(num_elem_of_id):
+            for j in ti.ndrange(num_elem_of_parent_id):
+                skip = False
+                if same_category and i == j:
+                    skip = True
+                if not skip:
+                    d_outer = self.multiSphereDistance(id, parent_id, i, j)
 
-                for k in range(self.nSteps):
-                    r = self.target_radii[id, k] / self.target_rmax[id]
-                    val = self.gaussianKernel(r - d_outer)
-                    ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
-                    # print('ind_w:', ind_w)
-                    ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
-                    # print('ind_pcf:', ind_pcf)
-                    self.target_pcf_mean[ind_pcf] += val * self.pcf_tmp_weights[ind_w] / self.target_area[id, k] / num_elem_of_parent_id
+                    for k in range(self.nSteps):
+                        r = self.target_radii[id, k] / self.target_rmax[id]
+                        val = self.gaussianKernel(r - d_outer)
+                        ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
+                        # print('ind_w:', ind_w)
+                        # ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+                        # print('ind_pcf:', ind_pcf)
+                        # self.target_pcf_mean[ind_pcf] += val * self.pcf_tmp_weights[ind_w] / self.target_area[id, k] / num_elem_of_parent_id
+                        self.pcf_density[ind_w] += val * self.pcf_tmp_weights[ind_w] / self.target_area[id, k] / num_elem_of_parent_id
 
-                for k in range(self.nSteps):
-                    ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
-                    if self.target_pcf_min[ind_pcf] > self.target_pcf_mean[ind_pcf]:
-                        self.target_pcf_min[ind_pcf] = self.target_pcf_mean[ind_pcf]
-                    if self.target_pcf_max[ind_pcf] < self.target_pcf_mean[ind_pcf]:
-                        self.target_pcf_max[ind_pcf] = self.target_pcf_mean[ind_pcf]
+            for k in range(self.nSteps):
+                ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+                ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
+                self.target_pcf_mean[ind_pcf] += self.pcf_density[ind_w]
+                if self.target_pcf_min[ind_pcf] > self.pcf_density[ind_w]:
+                    self.target_pcf_min[ind_pcf] = self.pcf_density[ind_w]
+                if self.target_pcf_max[ind_pcf] < self.pcf_density[ind_w]:
+                    self.target_pcf_max[ind_pcf] = self.pcf_density[ind_w]
 
         for k in range(self.nSteps):
             ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
@@ -539,7 +533,7 @@ class Solver:
             error_min = max(x, error_min)
 
         ce = error_mean + max(error_max, error_min)
-
+        # print('ce:', ce)
         return ce
 
     @ti.kernel
