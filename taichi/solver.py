@@ -556,17 +556,19 @@ class Solver:
 
     def initialization(self):
         e_delta = 1e-4
+        e_0 = 0
+        max_fails = 1000
+
 
         for i in range(self.num_classes):
             self.output_id2currentNum[i] = 0
 
         start_time = time()
         for i in range(len(self.topological_order)):
+            # start_time = time()
+
             cur_id = self.topological_order[i]
-            e_0 = 0
-            max_fails = 1000
             fails = 0
-            n_accepted = 0
 
             self.current_pcf.from_numpy(np.zeros((self.num_classes, self.nSteps)))
             self.contributions.from_numpy(np.zeros((self.num_classes, 3, self.nSteps)))
@@ -579,13 +581,15 @@ class Solver:
             output_size = self.target_id2ElemNum[cur_id] * self.n_repeat
             # print('output_size:', output_size)
 
+
             while n_accepted < output_size:
 
                 e = e_0 + e_delta * fails
+
                 rx = np.random.rand()
                 ry = np.random.rand()
                 if i == 0:
-                    min_xy = 0.08
+                    min_xy = 0.05
                     rx = min_xy + np.random.rand() * (1 - min_xy * 2)  # my version
                     ry = min_xy + np.random.rand() * (1 - min_xy * 2)
 
