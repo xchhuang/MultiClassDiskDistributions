@@ -201,7 +201,7 @@ void Category::initialize(float domainLength, float e_delta){
             {
                 float errors[N_I+1][N_J+1];
                 Compare minError = {INFINITY,0, 0};
-#pragma omp parallel for default(none) collapse(2) shared(output_disks_radii, n_accepted, relations, others, parameters, nSteps, errors, diskfact, contribs, weights, current_pcf, domainLength)
+                // #pragma omp parallel for default(none) collapse(2) shared(output_disks_radii, n_accepted, relations, others, parameters, nSteps, errors, diskfact, contribs, weights, current_pcf, domainLength)
                 for(unsigned long i=1; i<N_I; i++)
                 {
                     for(unsigned long j=1; j<N_J; j++)

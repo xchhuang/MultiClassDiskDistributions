@@ -14,6 +14,8 @@
 //#include "include/Scene.h"
 //#include "include/LinePlot.h"
 #include "include/ASMCDD.h"
+#include <chrono>
+typedef std::chrono::high_resolution_clock Clock;
 
 //std::mutex draw_lock;
 
@@ -511,8 +513,14 @@ int main(int argc, char *argv[]){
     //Initialization
     std::vector<unsigned long> vs = algo.getFinalSizes(1);
     std::cout << vs.size() << std::endl;
+
+    auto t1 = Clock::now();
     algo.initialize(algo_params.domainLength, algo_params.error_delta);
-    
+    auto t2 = Clock::now();
+    std::cout << "Time: " 
+              << std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count() / 1e9
+              << " seconds" << std::endl;
+
     std::ofstream out_init_pts("../outputs/init_pts_final.txt");
     out_init_pts << vs.size();
     for (unsigned long id=0; id<vs.size(); id++) {
