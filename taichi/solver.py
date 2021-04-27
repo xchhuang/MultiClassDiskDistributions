@@ -235,84 +235,7 @@ class Solver:
                             self.target_id2PrevElemNum,
                             self.total_samples_per_element, self.n_repeat,
                             self.opt.output_folder + '/output_element_ti')
-        # return
-        # self.output = defaultdict(list)
-        # self.target_pcf_mean = defaultdict(dict)  # [id][id_parent][nSteps]
-        # self.target_pcf_min = defaultdict(dict)
-        # self.target_pcf_max = defaultdict(dict)
-        # self.target_pcf_radii = defaultdict(dict)
-        # self.target_pcf_rmax = defaultdict(dict)
-        # self.target_pcf_area = defaultdict(dict)
-        # self.target_pcf_count = defaultdict(dict)
-        #
-        # self.output_disks_radii = defaultdict(list)  # [id][num_out_disks_of_idclass], sort radii for synthesis
-        # self.current_pcf = defaultdict(list)  # [id_parent][nSteps]
-        # self.contributions = defaultdict(Contribution)  # [id_parent][Contribution]
-        # self.weights = defaultdict(list)  # [relation][num_output_disk, nSteps]
-        # self.count_disks = defaultdict(int)  # [id], return number of disks already added
-        # self.d_test_ti = ti.field(dtype=ti.f32, shape=3)  # [samplers_per_element, 3]
-        # self.test_pcf = Contribution(self.nSteps)  # [Contribution]
-        # self.tmp_weight = ti.field(dtype=ti.f32, shape=self.nSteps)  # tmp
-        #
-        # self.domainLength = opt.domainLength
-        # self.n_factor = self.domainLength * self.domainLength
-        # self.diskfact = 1
-        # # self.cur_id = 0
-        # # self.cur_parent_id = 0
-        # self.n_repeat = math.ceil(self.n_factor)
-        #
-        # for i in categories.keys():
-        #     x = np.array(categories[i])
-        #     if opt.samples_per_element:
-        #         x = np.expand_dims(x, 1)
-        #
-        #     # self.target[i] = ti.field(dtype=ti.f32, shape=x.shape)
-        #     self.output[i] = ti.field(dtype=ti.f32, shape=(x.shape[0] * self.n_repeat, x.shape[1], x.shape[2]))
-        #     self.output_disks_radii[i] = ti.field(dtype=ti.f32, shape=len(self.categories[i]) * self.n_repeat)
-        #     self.current_pcf[i] = ti.field(dtype=ti.f32, shape=self.nSteps)
-        #     self.contributions[i] = Contribution(self.nSteps)
-        #     # self.weights[i] = ti.Vector.field(max_num_disks, dtype=ti.f32, shape=self.nSteps)
-        #     for j in self.relations[i]:
-        #         Nk = len(self.categories[i])
-        #         same_category = False
-        #         self.target_pcf_mean[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
-        #         self.target_pcf_min[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
-        #         self.target_pcf_max[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
-        #         self.target_pcf_count[i][j] = Nk
-        #         self.target_pcf_rmax[i][j] = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * Nk))
-        #         self.target_pcf_radii[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
-        #         self.target_pcf_area[i][j] = ti.field(dtype=ti.f32, shape=self.nSteps)
-        #
-        # for i in categories.keys():
-        #     x = np.array(categories[i])
-        #     if opt.samples_per_element:
-        #         x = np.expand_dims(x, 1)
-        #     print('x:', x.shape)  # [N, spe, 3]
-        #     # self.target[i].from_numpy(x)
-        #     self.output[i].from_numpy(np.zeros((x.shape[0] * self.n_repeat, x.shape[1], x.shape[2])))
-        #     radii = x[:, 0, -1].repeat(self.n_repeat) / self.domainLength
-        #     radii = np.sort(radii)[::-1]
-        #     self.output_disks_radii[i].from_numpy(radii)
-        #     self.current_pcf[i].from_numpy(np.zeros(self.nSteps))
-        #     self.contributions[i].initialize()
-        #     # self.weights[i] = ti.Vector.field(max_num_disks, dtype=ti.f32, shape=self.nSteps)
-        #     for j in self.relations[i]:
-        #         Nk = len(self.categories[i])
-        #         same_category = False
-        #         self.target_pcf_mean[i][j].from_numpy(np.zeros(self.nSteps))
-        #         self.target_pcf_min[i][j].from_numpy(np.ones(self.nSteps) * np.inf)
-        #         self.target_pcf_max[i][j].from_numpy(np.ones(self.nSteps) * -np.inf)
-        #         for k in range(self.nSteps):
-        #             radii = (i + 1) * self.step_size * self.target_pcf_rmax[i][j]
-        #             self.target_pcf_radii[i][j][k] = radii
-        #             inner = max(0, radii - 0.5 * self.target_pcf_rmax[i][j])
-        #             outer = radii + 0.5 * self.target_pcf_rmax[i][j]
-        #             self.target_pcf_area[i][j][k] = math.pi * (outer * outer - inner * inner)
-        #
-        # start = time()
-        # self.compute_target_pcf()
-        # end = time()
-        # print('Time for computeTarget1 {:.4f}s.'.format(end - start))
+
 
     @ti.kernel
     def get_weights(self, id_index: ti.i32, parent_id_index: ti.i32):
@@ -418,15 +341,6 @@ class Solver:
         num_elem_of_id = self.target_id2ElemNum[id]
         num_elem_of_parent_id = self.target_id2ElemNum[parent_id]
         # print(num_elem_of_id, num_elem_of_parent_id)
-        # for _ in range(1):
-        # for i in ti.ndrange((0, num_elem_of_id)):
-        #     for k in range(self.nSteps):
-        #         ind_i = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (i * self.total_samples_per_element * 3) + 0 * 3 + 0  # + l
-        #         p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
-        #         ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
-        #         # print('ind_w:', ind_w)
-        #         self.pcf_tmp_weights[ind_w] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k])    # target_radii[id] is correct
-        #         self.pcf_density[ind_w] = 0.0
 
         # for i, j in ti.ndrange((0, num_elem_of_id), (0, num_elem_of_parent_id)):
         for _ in range(1):
@@ -519,17 +433,11 @@ class Solver:
                     r = self.target_radii[id, k] / self.target_rmax[id]
                     val = self.gaussianKernel(r - d_outer)
                     # print(val)
-                    # self.test_pcf[2, k] += val
-                    # self.test_pcf[1, k] += val * self.weights[parent_id, j, k]
                     self.contribs[grid_id_x, grid_id_y, parent_id, 2, k] += val
                     self.contribs[grid_id_x, grid_id_y, parent_id, 1, k] += val * self.weights[parent_id, j, k]
 
 
             for k in range(self.nSteps):
-                # self.test_pcf[2, k] += self.test_pcf[0, k] / self.target_area[parent_id, k]
-                # self.test_pcf[1, k] = self.test_pcf[2, k] + self.test_pcf[1, k] / self.target_area[parent_id, k]
-                # self.test_pcf[2, k] /= self.output_id2currentNum[parent_id]
-                # self.test_pcf[1, k] /= target_size
                 self.contribs[grid_id_x, grid_id_y, parent_id, 2, k] *= self.contribs[grid_id_x, grid_id_y, parent_id, 0, k] / self.target_area[id, k]
                 self.contribs[grid_id_x, grid_id_y, parent_id, 1, k] = self.contribs[grid_id_x, grid_id_y, parent_id, 2, k] + \
                                                                        self.contribs[grid_id_x, grid_id_y, parent_id, 1, k] / self.target_area[id, k]
@@ -637,12 +545,7 @@ class Solver:
                 self.compute_contribution(n_i, n_j, id_index, j, gx, gy, n_accepted, target_size)
                 ce = self.compute_error(n_i, n_j, id_index, j)
                 self.errors[n_i, n_j] = max(ce, self.errors[n_i, n_j])
-                # if minError_val > currentError:
-                #     minError_val = currentError
-                #     # minError_i = n_i
-                #     # minError_j = n_j
-                #     self.minError_i_ti[None] = n_i
-                #     self.minError_j_ti[None] = n_j
+
         for n_i, n_j in ti.ndrange((1, self.N_I), (1, self.N_J)):
             if minError_val > self.errors[n_i, n_j]:
                 minError_val = self.errors[n_i, n_j]
@@ -719,9 +622,6 @@ class Solver:
                     print('===> Warning: exceeding max_fails...', n_accepted)
                     # print('n_accepted before grid search:', n_accepted)
                     # break
-                    # self.minError_contrib.from_numpy(np.zeros((self.num_classes, 3, self.nSteps)))
-                    # print('Warning: need to do grid search...')
-                    # self.output_id2currentNum[cur_id] += 1
 
                     while n_accepted < output_size:
                         # print(n_accepted, cur_id)
