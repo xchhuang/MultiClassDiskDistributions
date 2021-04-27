@@ -228,8 +228,8 @@ class Solver:
                             self.opt.output_folder + '/test_output_element_ti')
 
 
-        for _ in range(2):
-            self.initialization()
+        # for _ in range(2):
+        self.initialization()
 
         utils.plot_disks_ti(self.topological_order_ti, self.output, self.target_id2ElemNum,
                             self.target_id2PrevElemNum,
