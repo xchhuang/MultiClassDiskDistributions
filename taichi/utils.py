@@ -101,8 +101,9 @@ def plot_disks(topological_order, outputs, filename):
     plt.clf()
 
 
-def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevElemNum, total_samples_per_element, n_reapt, filename):
-    topological_order = topological_order.to_numpy()
+def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevElemNum, total_samples_per_element, n_repeat, domainLength, filename):
+
+    # topological_order = topological_order.to_numpy()
     outputs = outputs.to_numpy()
     target_id2ElemNum = target_id2ElemNum.to_numpy()
     target_id2PrevElemNum = target_id2PrevElemNum.to_numpy()
@@ -110,13 +111,13 @@ def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevE
     fig, ax = plt.subplots()
     for i in range(len(topological_order)):
         out = []
-        num_elem = target_id2ElemNum[topological_order[i]] * n_reapt
+        num_elem = target_id2ElemNum[topological_order[i]] * n_repeat
         for j in range(num_elem):
             e = []
             for k in range(total_samples_per_element):
                 ind = target_id2PrevElemNum[topological_order[i]] * total_samples_per_element * 3 + (
                         j * total_samples_per_element * 3) + (k * 3)
-                e.append([outputs[ind + 0], outputs[ind + 1], outputs[ind + 2]])
+                e.append([outputs[ind + 0]/domainLength, outputs[ind + 1]/domainLength, outputs[ind + 2]/domainLength])
             out.append(e)
         out = np.array(out)
 
@@ -138,7 +139,7 @@ def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevE
 
 
 def plot_pcf(topological_order, relations, pcf_mean, pcf_min, pcf_max, target_id2RelNum, target_id2PrevRelNum, nSteps, filename):
-    topological_order = topological_order.to_numpy()
+    # topological_order = topological_order.to_numpy()
     pcf_mean = pcf_mean.to_numpy()
     target_id2RelNum = target_id2RelNum.to_numpy()
     target_id2PrevRelNum = target_id2PrevRelNum.to_numpy()
