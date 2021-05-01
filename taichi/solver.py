@@ -467,7 +467,7 @@ class Solver:
                 same_category = False
                 if cur_id == cur_parent_id:
                     same_category = True
-                self.compute_target_pcf_kernel(i, j, same_category)     # (cur_id, parent_id, same_category)  # , 0/1, pcf_index)
+                self.compute_target_pcf_kernel(i, j, same_category)     # (cur_id, parent_id, same_category)
 
     def compute_output_pcf(self):
         for i in range(len(self.topological_order)):
