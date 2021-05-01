@@ -107,15 +107,17 @@ def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevE
     outputs = outputs.to_numpy()
     target_id2ElemNum = target_id2ElemNum.to_numpy()
     target_id2PrevElemNum = target_id2PrevElemNum.to_numpy()
-
+    # print('plot_disks_ti:', topological_order)
     fig, ax = plt.subplots()
+
     for i in range(len(topological_order)):
         out = []
         num_elem = target_id2ElemNum[topological_order[i]] * n_repeat
+        # print(n_repeat, num_elem)
         for j in range(num_elem):
             e = []
             for k in range(total_samples_per_element):
-                ind = target_id2PrevElemNum[topological_order[i]] * total_samples_per_element * 3 + (
+                ind = target_id2PrevElemNum[topological_order[i]] * n_repeat * total_samples_per_element * 3 + (
                         j * total_samples_per_element * 3) + (k * 3)
                 e.append([outputs[ind + 0]/domainLength, outputs[ind + 1]/domainLength, outputs[ind + 2]/domainLength])
             out.append(e)

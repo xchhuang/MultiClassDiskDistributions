@@ -46,8 +46,8 @@ class Solver:
         self.n_factor = self.domainLength * self.domainLength
         self.disk_fact = 1 / self.domainLength
         self.n_repeat = math.ceil(self.n_factor)
-        self.N_I = 100
-        self.N_J = 100
+        self.N_I = 80 * int(self.domainLength)
+        self.N_J = 80 * int(self.domainLength)
 
         graph, topological_order = utils.topologicalSort(len(self.categories.keys()), self.relations)
         self.topological_order = topological_order
@@ -235,15 +235,19 @@ class Solver:
                 # print(j, self.n_repeat, j // self.n_repeat)
                 # print(j, idx[j])
                 for k in range(self.total_samples_per_element):
+
+                    ind_tar = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (idx[j//self.n_repeat] * self.total_samples_per_element * 3) + (k * 3 + 0)
+                    ind_out = self.target_id2PrevElemNum[id] * self.n_repeat * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + (k * 3 + 0)
+                    # print(self.target[ind_tar + l])
                     for l in range(3):
-                        ind_tar = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (idx[j//self.n_repeat] * self.total_samples_per_element * 3) + (k * 3 + l)
-                        ind_out = self.target_id2PrevElemNum[id] * self.n_repeat * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + (k * 3 + l)
+
                         # print('ind_out:', ind_out)
                         # print('ind_tar:', ind_tar)
-                        self.output_disks_radii[ind_out] = self.target[ind_tar]  # / self.domainLength
+                        self.output_disks_radii[ind_out+l] = self.target[ind_tar+l]  # / self.domainLength
 
-        utils.plot_disks_ti(self.topological_order_ti.to_numpy(), self.output_disks_radii, self.target_id2ElemNum, self.target_id2PrevElemNum, self.total_samples_per_element,
-                            self.n_repeat, 1, self.opt.output_folder + '/init_element_ti')
+                        # print(j, self.n_repeat, j % self.n_repeat, self.target[ind_tar])
+        # utils.plot_disks_ti(self.topological_order_ti.to_numpy(), self.output_disks_radii, self.target_id2ElemNum, self.target_id2PrevElemNum, self.total_samples_per_element,
+        #                     self.n_repeat, 1, self.opt.output_folder + '/init_element_ti')
 
         # start = time()
         # self.compute_pcf(is_target=0)   # output pcf, not the target one
@@ -255,15 +259,16 @@ class Solver:
         ############################################################## output init end #########################################################
 
         ############################################################## output synthesis start #########################################################
+
         # for _ in range(2):
         self.initialization()
 
-        utils.plot_disks_ti(self.topological_order_ti.to_numpy(), self.output, self.target_id2ElemNum, self.target_id2PrevElemNum, self.total_samples_per_element, self.n_repeat,
+        utils.plot_disks_ti(self.topological_order_ti.to_numpy(), self.output_disks_radii, self.target_id2ElemNum, self.target_id2PrevElemNum, self.total_samples_per_element, self.n_repeat,
                             self.domainLength, self.opt.output_folder + '/output_element_ti')
 
         self.compute_pcf(is_target=0)  # output pcf, not the target one
         utils.plot_pcf(self.topological_order_ti.to_numpy(), self.relations, self.output_pcf_mean, self.output_pcf_min, self.output_pcf_max, self.target_id2RelNum,
-                       self.target_id2PrevRelNum, self.nSteps, self.opt.output_folder + '/init_pcf')
+                       self.target_id2PrevRelNum, self.nSteps, self.opt.output_folder + '/output_pcf')
 
         utils.plot_2_pcf(self.topological_order_ti.to_numpy(), self.relations, self.target_pcf_mean, self.output_pcf_mean, self.target_id2RelNum,
                          self.target_id2PrevRelNum, self.nSteps, self.opt.output_folder + '/compare_pcf')
@@ -458,11 +463,11 @@ class Solver:
                     # multiSphere Distance
                     d_outer = np.inf
                     for k1 in range(self.total_samples_per_element):
-                        ind_i = self.target_id2PrevElemNum[id] * 1 * self.total_samples_per_element * 3 + (i * self.total_samples_per_element * 3) + k1 * 3  # + l
+                        ind_i = self.target_id2PrevElemNum[id] * self.n_repeat * self.total_samples_per_element * 3 + (i * self.total_samples_per_element * 3) + k1 * 3  # + l
                         p_i = ti.Vector([self.output[ind_i + 0], self.output[ind_i + 1], self.output[ind_i + 2]])
                         d_inner = np.inf
                         for k2 in range(self.total_samples_per_element):
-                            ind_j = self.target_id2PrevElemNum[parent_id] * 1 * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + k2 * 3  # + l
+                            ind_j = self.target_id2PrevElemNum[parent_id] * self.n_repeat * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + k2 * 3  # + l
                             p_j = ti.Vector([self.output[ind_j + 0], self.output[ind_j + 1], self.output[ind_j + 2]])
                             dist = self.diskDistance(p_i, p_j, self.output_rmax[id])
                             if d_inner > dist:
@@ -628,6 +633,7 @@ class Solver:
         minError_val = np.inf
         # minError_i = 1
         # minError_j = 1
+
         for n_i, n_j in ti.ndrange((1, self.N_I), (1, self.N_J)):
             id = self.topological_order_ti[id_index]
             num_relation = self.target_id2RelNum[id_index]
@@ -653,7 +659,7 @@ class Solver:
                 self.minError_j_ti[None] = n_j
 
     def initialization(self):
-        e_delta = 1e-2      # tunable
+        e_delta = 1e-4     # tunable
         e_0 = 0
         max_fails = 1000
 
@@ -666,10 +672,10 @@ class Solver:
         for i in range(len(self.topological_order)):
             # start_time = time()
 
-            # if i == 0:
-            #     e_delta = 1
-            # else:
-            #     e_delta = 1e-4
+            if i == 0:
+                e_delta = 1
+            else:
+                e_delta = 1e-4
 
             cur_id = self.topological_order[i]
             fails = 0
@@ -692,7 +698,7 @@ class Solver:
                 rx = np.random.rand() * self.domainLength
                 ry = np.random.rand() * self.domainLength
                 if i == 0:
-                    min_xy = 0.1
+                    min_xy = 0.09
                     rx = min_xy + np.random.rand() * (self.domainLength - min_xy * 2)  # my version
                     ry = min_xy + np.random.rand() * (self.domainLength - min_xy * 2)
 
@@ -702,6 +708,7 @@ class Solver:
                 if rejected:
                     fails += 1
                 else:
+                    print('doing random search:', cur_id, n_accepted, output_size)
                     fails = 0
                     self.output_id2currentNum[cur_id] += 1
                     Ne = self.target_id2PrevElemNum[cur_id] * self.n_repeat
@@ -732,7 +739,8 @@ class Solver:
                     # break
 
                     while n_accepted < output_size:
-                        # print(n_accepted, cur_id)
+                        # print('aregjeopgrjpe')
+                        print('doing grid search:', cur_id, n_accepted, output_size)
                         self.minError_i_ti[None] = 1
                         self.minError_j_ti[None] = 1
                         self.errors.from_numpy(np.zeros((self.N_I, self.N_J)))
@@ -767,7 +775,9 @@ class Solver:
 
                         n_accepted += 1
 
+
             class_done.append(cur_id)
+            # print('class_done:', class_done)
             utils.plot_disks_ti(class_done, self.output, self.target_id2ElemNum, self.target_id2PrevElemNum, self.total_samples_per_element, self.n_repeat, self.domainLength,
                                 self.opt.output_folder + '/output_element_ti_{:}'.format(cur_id))
             # end_time = time()
