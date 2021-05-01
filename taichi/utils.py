@@ -172,6 +172,36 @@ def plot_pcf(topological_order, relations, pcf_mean, pcf_min, pcf_max, target_id
             plt.clf()
 
 
+def plot_2_pcf(topological_order, relations, target_pcf_mean, output_pcf_mean, target_id2RelNum, target_id2PrevRelNum, nSteps, filename):
+    # topological_order = topological_order.to_numpy()
+    target_pcf_mean = target_pcf_mean.to_numpy()
+    target_id2RelNum = target_id2RelNum.to_numpy()
+    target_id2PrevRelNum = target_id2PrevRelNum.to_numpy()
+
+    for i in range(len(topological_order)):
+        id = topological_order[i]
+        num_relation = target_id2RelNum[id]
+        for j in range(num_relation):
+            output_pcf = []
+            target_pcf = []
+
+            for k in range(nSteps):
+                # print(self.target_id2PrevElemNum[self.topological_order[i]])
+                ind_w = target_id2PrevRelNum[id] * nSteps + j * nSteps + k
+                target_pcf.append(target_pcf_mean[ind_w])
+                output_pcf.append(output_pcf_mean[ind_w])
+
+            target_pcf = np.array(target_pcf)
+            output_pcf = np.array(output_pcf)
+
+            # print(out.shape)
+            plt.figure(1)
+            plt.plot(output_pcf, c='g')
+            plt.plot(target_pcf, c='r')
+            plt.savefig(filename+'_{:}_{:}'.format(id, relations[id][j]))
+            plt.clf()
+
+
 def topologicalSort(num_classes, relations):
     graph = defaultdict(list)
     for k in range(num_classes):
