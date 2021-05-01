@@ -343,47 +343,47 @@ class Solver:
         # print(num_elem_of_id, num_elem_of_parent_id)
 
         # for i, j in ti.ndrange((0, num_elem_of_id), (0, num_elem_of_parent_id)):
-        for _ in range(1):
-            for i in ti.ndrange(num_elem_of_id):
+        # for _ in range(1):
+        for i in ti.ndrange(num_elem_of_id):
 
-                for k in range(self.nSteps):
-                    ind_i = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (i * self.total_samples_per_element * 3) + 0 * 3 + 0  # + l
-                    p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
-                    ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
-                    # print('ind_w:', ind_w)
-                    self.pcf_tmp_weights[ind_w] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k])    # target_radii[id] is correct
-                    self.pcf_density[ind_w] = 0.0
+            for k in range(self.nSteps):
+                ind_i = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (i * self.total_samples_per_element * 3) + 0 * 3 + 0  # + l
+                p_i = ti.Vector([self.target[ind_i + 0], self.target[ind_i + 1], self.target[ind_i + 2]])
+                ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
+                # print('ind_w:', ind_w)
+                self.pcf_tmp_weights[ind_w] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k])    # target_radii[id] is correct
+                self.pcf_density[ind_w] = 0.0
 
-                for j in ti.ndrange(num_elem_of_parent_id):
-                    # skip = False
-                    # if same_category and i == j:
-                    #     skip = True
-                    if (same_category and i != j) or (not same_category):
-                        d_outer = self.multiSphereDistance(id, parent_id, i, j)
+            for j in ti.ndrange(num_elem_of_parent_id):
+                # skip = False
+                # if same_category and i == j:
+                #     skip = True
+                if (same_category and i != j) or (not same_category):
+                    d_outer = self.multiSphereDistance(id, parent_id, i, j)
 
-                        for k in range(self.nSteps):
-                            r = self.target_radii[id, k] / self.target_rmax[id]
-                            val = self.gaussianKernel(r - d_outer)
-                            ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
-                            # print('ind_w:', ind_w)
-                            # ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
-                            # print('ind_pcf:', ind_pcf)
-                            # self.target_pcf_mean[ind_pcf] += val * self.pcf_tmp_weights[ind_w] / self.target_area[id, k] / num_elem_of_parent_id
-                            self.pcf_density[ind_w] += val * self.pcf_tmp_weights[ind_w] / self.target_area[id, k] / num_elem_of_parent_id
-
-                for k in range(self.nSteps):
-                    ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
-                    ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
-                    self.target_pcf_mean[ind_pcf] += self.pcf_density[ind_w]
-                    if self.target_pcf_min[ind_pcf] > self.pcf_density[ind_w]:
-                        self.target_pcf_min[ind_pcf] = self.pcf_density[ind_w]
-                    if self.target_pcf_max[ind_pcf] < self.pcf_density[ind_w]:
-                        self.target_pcf_max[ind_pcf] = self.pcf_density[ind_w]
+                    for k in range(self.nSteps):
+                        r = self.target_radii[id, k] / self.target_rmax[id]
+                        val = self.gaussianKernel(r - d_outer)
+                        ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
+                        # print('ind_w:', ind_w)
+                        # ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+                        # print('ind_pcf:', ind_pcf)
+                        # self.target_pcf_mean[ind_pcf] += val * self.pcf_tmp_weights[ind_w] / self.target_area[id, k] / num_elem_of_parent_id
+                        self.pcf_density[ind_w] += val * self.pcf_tmp_weights[ind_w] / self.target_area[id, k] / num_elem_of_parent_id
 
             for k in range(self.nSteps):
                 ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
-                # print('ind_pcf:', ind_pcf)
-                self.target_pcf_mean[ind_pcf] /= num_elem_of_id
+                ind_w = self.target_id2PrevElemNum[id] * self.nSteps + i * self.nSteps + k
+                self.target_pcf_mean[ind_pcf] += self.pcf_density[ind_w]
+                if self.target_pcf_min[ind_pcf] > self.pcf_density[ind_w]:
+                    self.target_pcf_min[ind_pcf] = self.pcf_density[ind_w]
+                if self.target_pcf_max[ind_pcf] < self.pcf_density[ind_w]:
+                    self.target_pcf_max[ind_pcf] = self.pcf_density[ind_w]
+
+        for k in range(self.nSteps):
+            ind_pcf = self.target_id2PrevRelNum[id] * self.nSteps + parent_id_index * self.nSteps + k
+            # print('ind_pcf:', ind_pcf)
+            self.target_pcf_mean[ind_pcf] /= num_elem_of_id
 
     def compute_target_pcf(self):
         for i in range(len(self.topological_order)):
@@ -567,6 +567,11 @@ class Solver:
         for i in range(len(self.topological_order)):
             # start_time = time()
 
+            if i == 0:
+                e_delta = 1
+            else:
+                e_delta = 1e-4
+
             cur_id = self.topological_order[i]
             fails = 0
 
@@ -589,7 +594,7 @@ class Solver:
                 rx = np.random.rand()
                 ry = np.random.rand()
                 if i == 0:
-                    min_xy = 0.05
+                    min_xy = 0.095
                     rx = min_xy + np.random.rand() * (1 - min_xy * 2)  # my version
                     ry = min_xy + np.random.rand() * (1 - min_xy * 2)
 

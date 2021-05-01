@@ -172,6 +172,8 @@ class ASMCDD(torch.nn.Module):
         print('===> Plot Pretty PCF, Done.')
 
     def initialize(self, domainLength=1, e_delta=1e-4):
+
+
         # first find the topological oder
         graph, topological_order = utils.topologicalSort(len(self.target), self.relations)
         self.topological_order = topological_order
@@ -186,24 +188,14 @@ class ASMCDD(torch.nn.Module):
         others = defaultdict(list)  # existing generated disks
         for i in topological_order:
             others[i] = []
-        print(topological_order)
+        # print(topological_order)
 
-        # TODO: predefined id 0 for debugging
-        # predefined_id_pts = defaultdict(list)
-        # for i in range(2):
-        #     pts = []
-        #     with open('../simpler_cpp/outputs/debug_forest_{:}.txt'.format(i)) as f:
-        #         lines = f.readlines()
-        #         for line in lines:
-        #             line = line.strip().split(' ')
-        #             l = [float(x) for x in line]
-        #             pts.append(l)
-        #     predefined_id_pts[i] = pts
         class_done = []
 
         for i in topological_order:
-            # if i > 1:
-            #     break
+            # e_delta = 1e-4
+            # if i == 0:
+            #     e_delta = 1
             # TODO: those params should be defined inside the loop
             e_0 = 0
             max_fails = 1000
@@ -256,16 +248,11 @@ class ASMCDD(torch.nn.Module):
                 #
                 rejected = False
                 e = e_0 + e_delta * fails
-                # if i == 0:
-                # current_radius = output_disks_radii[n_accepted]
 
-                # if i == 0:
-                #     print(current_radius, (domainLength - current_radius))
-                # else:
                 rx = np.random.rand()  # * domainLength
                 ry = np.random.rand()  # * domainLength
                 # if i == 0:
-                #     min_xy = 0.09
+                #     min_xy = 0.08
                 #     rx = min_xy + np.random.rand() * (domainLength - min_xy * 2)  # my version
                 #     ry = min_xy + np.random.rand() * (domainLength - min_xy * 2)
                 # print(rx, ry)
@@ -472,6 +459,11 @@ class ASMCDD(torch.nn.Module):
             end_time = time()
             print('===> Initialization time: {:.4f}'.format(end_time - start_time))
 
+            cur_all_outputs = []
+            for k in class_done:
+                cur_all_outputs.append(torch.stack(others[k], 0))
+            utils.plot_disks(class_done, cur_all_outputs, self.opt.output_folder + '/init_{:}'.format(i))
+
             """
             Refinement step:
             """
@@ -479,7 +471,7 @@ class ASMCDD(torch.nn.Module):
             current_output = torch.stack(others[category_i], 0)
             model_refine = Refiner(self.device, self.opt, current_output).to(self.device)
             optimizer = torch.optim.Adam(model_refine.parameters(), lr=1e-4)
-            n_iter = 0
+            n_iter = 100
             start_time = time()
             for itr in range(1, n_iter + 1):
                 cur_all_outputs = []

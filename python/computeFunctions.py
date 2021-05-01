@@ -89,8 +89,11 @@ def compute_error(contribution, current_pcf, target_pcf):
 class PCF(torch.nn.Module):
     def __init__(self, device, nbbins=50, sigma=0.25, npoints=100, n_rmax=5):
         super(PCF, self).__init__()
+        N = npoints
+        N = N * 1
 
-        d = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * npoints))
+        d = 2 * np.sqrt(1.0 / (2 * np.sqrt(3) * N))
+
         self.device = device
         self.rmax = d
         self.nbbins = nbbins
