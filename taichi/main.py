@@ -14,7 +14,7 @@ from collections import defaultdict
 from solver import Solver
 
 # device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-device = torch.device('cpu')    # seems cpu is faster
+device = torch.device('cpu')  # seems cpu is faster
 # command
 # python main.py --config_filename=configs/zerg_rush.txt
 
@@ -28,7 +28,6 @@ parser.add_argument('--domainLength', type=int, default=1, help='domain size: 1 
 parser.add_argument('--samples_per_element', type=int, default=0, help='samples per element')
 
 opt = parser.parse_args()
-
 
 
 #
@@ -80,7 +79,7 @@ def main():
                 idx = id_map[line[0]]
                 x, y, r = line[1], line[2], line[3]
                 # print(idx)
-                categories[idx].append([x/10000.0, y/10000.0, r/10000.0])
+                categories[idx].append([x / 10000.0, y / 10000.0, r / 10000.0])
 
         for k in range(num_classes):
             relations[k].append(k)
@@ -104,5 +103,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

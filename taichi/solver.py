@@ -236,14 +236,13 @@ class Solver:
                 # print(j, idx[j])
                 for k in range(self.total_samples_per_element):
 
-                    ind_tar = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (idx[j//self.n_repeat] * self.total_samples_per_element * 3) + (k * 3 + 0)
+                    ind_tar = self.target_id2PrevElemNum[id] * self.total_samples_per_element * 3 + (idx[j // self.n_repeat] * self.total_samples_per_element * 3) + (k * 3 + 0)
                     ind_out = self.target_id2PrevElemNum[id] * self.n_repeat * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + (k * 3 + 0)
                     # print(self.target[ind_tar + l])
                     for l in range(3):
-
                         # print('ind_out:', ind_out)
                         # print('ind_tar:', ind_tar)
-                        self.output_disks_radii[ind_out+l] = self.target[ind_tar+l]  # / self.domainLength
+                        self.output_disks_radii[ind_out + l] = self.target[ind_tar + l]  # / self.domainLength
 
                         # print(j, self.n_repeat, j % self.n_repeat, self.target[ind_tar])
         # utils.plot_disks_ti(self.topological_order_ti.to_numpy(), self.output_disks_radii, self.target_id2ElemNum, self.target_id2PrevElemNum, self.total_samples_per_element,
@@ -263,7 +262,8 @@ class Solver:
         # for _ in range(2):
         self.initialization()
 
-        utils.plot_disks_ti(self.topological_order_ti.to_numpy(), self.output_disks_radii, self.target_id2ElemNum, self.target_id2PrevElemNum, self.total_samples_per_element, self.n_repeat,
+        utils.plot_disks_ti(self.topological_order_ti.to_numpy(), self.output_disks_radii, self.target_id2ElemNum, self.target_id2PrevElemNum, self.total_samples_per_element,
+                            self.n_repeat,
                             self.domainLength, self.opt.output_folder + '/output_element_ti')
 
         self.compute_pcf(is_target=0)  # output pcf, not the target one
@@ -467,7 +467,8 @@ class Solver:
                         p_i = ti.Vector([self.output[ind_i + 0], self.output[ind_i + 1], self.output[ind_i + 2]])
                         d_inner = np.inf
                         for k2 in range(self.total_samples_per_element):
-                            ind_j = self.target_id2PrevElemNum[parent_id] * self.n_repeat * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + k2 * 3  # + l
+                            ind_j = self.target_id2PrevElemNum[parent_id] * self.n_repeat * self.total_samples_per_element * 3 + (
+                                        j * self.total_samples_per_element * 3) + k2 * 3  # + l
                             p_j = ti.Vector([self.output[ind_j + 0], self.output[ind_j + 1], self.output[ind_j + 2]])
                             dist = self.diskDistance(p_i, p_j, self.output_rmax[id])
                             if d_inner > dist:
@@ -504,10 +505,9 @@ class Solver:
                 # print(cur_id, cur_parent_id)
                 same_category = True if cur_id == cur_parent_id else False
                 if is_target:
-                    self.compute_target_pcf_kernel(i, j, same_category)     # (cur_id, parent_id, same_category)
+                    self.compute_target_pcf_kernel(i, j, same_category)  # (cur_id, parent_id, same_category)
                 else:
                     self.compute_output_pcf_kernel(i, j, same_category)
-
 
     @ti.func
     def compute_contribution(self, grid_id_x, grid_id_y, id_index, parent_id_index, rx, ry, n_accepted, target_size):
@@ -515,7 +515,8 @@ class Solver:
         # parent_id = self.topological_order_ti[parent_id_index]
         parent_id = self.relations_ti[self.target_id2PrevRelNum[id] + parent_id_index]
 
-        ind_cur = self.target_id2PrevElemNum[id] * self.n_repeat * self.total_samples_per_element * 3 + (n_accepted * self.total_samples_per_element * 3) + (0 * 3 + 0)  # k = 0, l = 0
+        ind_cur = self.target_id2PrevElemNum[id] * self.n_repeat * self.total_samples_per_element * 3 + (n_accepted * self.total_samples_per_element * 3) + (
+                    0 * 3 + 0)  # k = 0, l = 0
         p_i = ti.Vector([rx, ry, self.output_disks_radii[ind_cur + 2]])  # random position (rx, ry)
         for k in range(self.nSteps):
             # self.test_pcf[0, k] = self.perimeter_weight_ti(p_i[0], p_i[1], self.target_radii[id, k] * self.disk_fact)
@@ -532,7 +533,8 @@ class Solver:
                     p_i = ti.Vector([rx, ry, self.output_disks_radii[ind_i + 2]])
                     d_inner = np.inf
                     for k2 in range(self.total_samples_per_element):
-                        ind_j = self.target_id2PrevElemNum[parent_id] * self.n_repeat * self.total_samples_per_element * 3 + (j * self.total_samples_per_element * 3) + k2 * 3  # + l
+                        ind_j = self.target_id2PrevElemNum[parent_id] * self.n_repeat * self.total_samples_per_element * 3 + (
+                                    j * self.total_samples_per_element * 3) + k2 * 3  # + l
                         p_j = ti.Vector([self.output[ind_j + 0], self.output[ind_j + 1], self.output[ind_j + 2]])
                         dist = self.diskDistance(p_i, p_j, self.target_rmax[id])  # target_rmax[id] should be indexed by [id]
                         if d_inner > dist:
@@ -659,7 +661,7 @@ class Solver:
                 self.minError_j_ti[None] = n_j
 
     def initialization(self):
-        e_delta = 1e-4     # tunable
+        e_delta = 1e-4  # tunable
         e_0 = 0
         max_fails = 1000
 
@@ -774,7 +776,6 @@ class Solver:
                                 self.current_pcf[parent_id, k] += self.contribs[minError_i, minError_j, parent_id, 1, k]
 
                         n_accepted += 1
-
 
             class_done.append(cur_id)
             # print('class_done:', class_done)
