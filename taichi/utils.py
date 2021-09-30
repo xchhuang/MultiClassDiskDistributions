@@ -68,11 +68,26 @@ def diskDistance(a, b, rmax):
     return d_norm
 
 
+# colors_dict = {
+#     0: 'r',
+#     1: 'g',
+#     2: 'b',
+#     3: 'k',
+# }
+
 colors_dict = {
     0: 'r',
     1: 'g',
     2: 'b',
-    3: 'k',
+    3: 'c',
+    4: 'm',
+    5: 'y',
+    6: 'k',
+    7: 'orange',
+    8: 'gray',
+    9: 'pink',
+    10: 'brown',
+    11: 'purple',
 }
 
 
@@ -89,15 +104,13 @@ def plot_disks(topological_order, outputs, filename):
         # plt.subplot(121)
         for i in range(out.shape[0]):
             # plt.scatter(out[:, 0], out[:, 1], s=5)
-            circle = plt.Circle((out[i, 0], out[i, 1]), out[i, 2], color=colors_dict[k], fill=False)
+            circle = plt.Circle((out[i, 0], out[i, 1]), out[i, 2], color=colors_dict[k], lw=1, fill=False)
             ax.add_artist(circle)
-        plt.axis('equal')
-        # plt.xlim([-0.5, 2.5])
-        # plt.ylim([-0.5, 2.5])
-        plt.xlim([-0.2, 1.2])
-        plt.ylim([-0.2, 1.2])
-        # plt.title('Synthesized')
-    plt.savefig(filename)
+        plt.xlim([0, 1])
+        plt.ylim([0, 1])
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.axis('off')
+    plt.savefig(filename+'.pdf')
     plt.clf()
 
 
@@ -120,6 +133,8 @@ def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevE
                 ind = target_id2PrevElemNum[topological_order[i]] * n_repeat * total_samples_per_element * 3 + (
                         j * total_samples_per_element * 3) + (k * 3)
                 e.append([outputs[ind + 0]/domainLength, outputs[ind + 1]/domainLength, outputs[ind + 2]/domainLength])
+                # e.append([outputs[ind + 0] / 1, outputs[ind + 1] / 1, outputs[ind + 2] / domainLength])
+                # print(outputs[ind + 0], outputs[ind + 1])
             out.append(e)
         out = np.array(out)
 
@@ -130,14 +145,12 @@ def plot_disks_ti(topological_order, outputs, target_id2ElemNum, target_id2PrevE
                 circle = plt.Circle((out[a, b, 0], out[a, b, 1]), out[a, b, 2], linewidth=1,
                                     color=colors_dict[topological_order[i]], fill=False)
                 ax.add_artist(circle)
-        plt.axis('equal')
-        # plt.xlim([-0.5, 2.5])
-        # plt.ylim([-0.5, 2.5])
-        plt.xlim([-0.2, 1.2])
-        plt.ylim([-0.2, 1.2])
-        # plt.title('Synthesized')
-    plt.savefig(filename)
-    plt.clf()
+        plt.xlim([0, 1])
+        plt.ylim([0, 1])
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.axis('off')
+    plt.savefig(filename + '.pdf', bbox_inches='tight', pad_inches=0, dpi=200)
+    plt.close('all')
 
 
 def plot_pcf(topological_order, relations, pcf_mean, pcf_min, pcf_max, target_id2RelNum, target_id2PrevRelNum, nSteps, filename):

@@ -675,9 +675,9 @@ class Solver:
             # start_time = time()
 
             if i == 0:
-                e_delta = 1
+                e_delta = 5e-2
             else:
-                e_delta = 1e-4
+                e_delta = 5e-2
 
             cur_id = self.topological_order[i]
             fails = 0
@@ -699,10 +699,10 @@ class Solver:
 
                 rx = np.random.rand() * self.domainLength
                 ry = np.random.rand() * self.domainLength
-                if i == 0:
-                    min_xy = 0.09
-                    rx = min_xy + np.random.rand() * (self.domainLength - min_xy * 2)  # my version
-                    ry = min_xy + np.random.rand() * (self.domainLength - min_xy * 2)
+                # if i == 0:
+                #     min_xy = 0.09
+                #     rx = min_xy + np.random.rand() * (self.domainLength - min_xy * 2)  # my version
+                #     ry = min_xy + np.random.rand() * (self.domainLength - min_xy * 2)
 
                 rejected = self.random_search(i, e, rx, ry, n_accepted)
                 # print('rejected:', rejected)
