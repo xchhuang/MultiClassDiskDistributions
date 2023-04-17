@@ -39,3 +39,9 @@ Slides/*
 taichi/old
 taichi/preprocess.py
 taichi/results
+common
+pure_cpp
+python
+python_elements
+simpler_cpp
+
