@@ -1,6 +1,6 @@
 import taichi as ti
 import numpy as np
-import torch
+# import torch
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import math
