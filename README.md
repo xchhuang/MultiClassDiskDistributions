@@ -1,5 +1,5 @@
 ## Multi-Class Disk Distributions
-This is an unofficial Taichi implementation of ["Accurate Synthesis of Multi-Class Disk Distributions"](https://hal.inria.fr/hal-02064699/file/Accurate_Synthesis_of_Multi_Class_Disk_Distributions%20%281%29.pdf) [EG 2019].
+This is an unofficial [Taichi](https://github.com/taichi-dev/taichi) implementation of ["Accurate Synthesis of Multi-Class Disk Distributions"](https://hal.inria.fr/hal-02064699/file/Accurate_Synthesis_of_Multi_Class_Disk_Distributions%20%281%29.pdf) [EG 2019].
 
 ### Prerequisite
 ```
