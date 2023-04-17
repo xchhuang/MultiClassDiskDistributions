@@ -55,7 +55,6 @@ Input                      |  Synthesized
 
 
 ### Reference
-* [code link](https://github.com/Helios77760/ASMCDD)
-* [paper link]()
+* [Unofficial C++ implementation](https://github.com/Helios77760/ASMCDD)
 
 
