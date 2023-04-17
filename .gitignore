@@ -36,3 +36,6 @@ build/*
 Slides
 Slides/*
 */Slides/*
+taichi/old
+taichi/preprocess.py
+taichi/results
