@@ -38,6 +38,7 @@ Slides/*
 */Slides/*
 taichi/old
 taichi/preprocess.py
+taichi/utils.py
 taichi/results
 common
 pure_cpp
