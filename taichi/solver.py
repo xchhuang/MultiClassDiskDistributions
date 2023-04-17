@@ -661,7 +661,7 @@ class Solver:
                 self.minError_j_ti[None] = n_j
 
     def initialization(self):
-        e_delta = 1e-4  # tunable
+        e_delta = 1e-2  # tunable
         e_0 = 0
         max_fails = 1000
 

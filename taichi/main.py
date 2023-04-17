@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 from time import time
-import torch
+# import torch
 import math
 from tqdm import tqdm
 import datetime
@@ -14,11 +14,11 @@ from collections import defaultdict
 from solver import Solver
 
 # device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-device = torch.device('cpu')  # seems cpu is faster
+# device = torch.device('cpu')  # seems cpu is faster
 # command
 # python main.py --config_filename=configs/zerg_rush.txt
-
 # np.random.seed(0)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_filename', type=str, default='configs/zerg_rush.txt', help='config file name')
 parser.add_argument('--refine', action='store_true')
