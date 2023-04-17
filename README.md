@@ -51,7 +51,7 @@ python main.py --config_filename=configs/zerg_rush.txt
 
 Input                      |  Synthesized
 :-------------------------:|:-------------------------:
-![](taichi/results/zerg_rush/target_element_ti.png)  |  ![](taichi/results/zerg_rush/output_element_ti_0.png)
+![](taichi/sample_results/zerg_rush/target_element_ti.png)  |  ![](taichi/sample_results/zerg_rush/output_element_ti_0.png)
 
 
 ### Reference
