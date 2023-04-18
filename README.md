@@ -2,7 +2,7 @@
 This is an unofficial, but single-file, fast implementation of ["Accurate Synthesis of Multi-Class Disk Distributions"](https://hal.inria.fr/hal-02064699/file/Accurate_Synthesis_of_Multi_Class_Disk_Distributions%20%281%29.pdf) [EG 2019] using [Taichi](https://github.com/taichi-dev/taichi).
 
 
-### Prerequisite
+### Prerequisites
 ```
 [Taichi] version 0.7.10, llvm 10.0.0, commit 0f0205fc, osx, python 3.7.10
 [Taichi] Starting on arch=x64
@@ -41,7 +41,7 @@ python main.py
 ```
  -->
 
-### How to run:
+### How to run
 ```
 cd taichi
 python main.py --config_filename=configs/zerg_rush.txt
